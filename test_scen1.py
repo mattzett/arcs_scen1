@@ -64,7 +64,8 @@ plt.show()
 
 
 # Now try to estimate the Hall conductance using current continuity...
-
+#  1) try finite difference decomposition (non-parametric)
+#  2) basis expansion version if conditioning is poor
 
 
 # do debug plots?
