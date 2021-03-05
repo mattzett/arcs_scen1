@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 def plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref, \
                      SigmaP_ref,SigmaP_refi,magE2):
     # plot input quantities
-    #plt.figure(dpi=300)
     plt.subplots(1,3,dpi=100)
     
     plt.subplot(1,3,1)
@@ -35,7 +34,6 @@ def plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref,
     
     
     # plot
-    #plt.figure(dpi=300)
     plt.subplots(2,2,dpi=100)
     
     plt.subplot(2,2,1)
@@ -61,7 +59,6 @@ def plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref,
     
     
     # more debug plots
-    #plt.figure(dpi=300)
     plt.subplots(1,2,dpi=100)
     
     plt.subplot(1,2,1)

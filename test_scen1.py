@@ -55,7 +55,6 @@ dissipation=SigmaP_refi*magE2
 
 
 # plot some comparisons
-#plt.figure(dpi=300)
 plt.subplots(1,2,dpi=100)
 
 plt.subplot(1,2,1)
@@ -70,8 +69,9 @@ plt.colorbar()
 plt.show()
 
 
+# do debug plots?
 if flagSigP_debug:
-    plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref,
+    plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref, \
                      SigmaP_ref,SigmaP_refi,magE2)
 
 
