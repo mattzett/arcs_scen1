@@ -10,4 +10,6 @@ Combine current continuity and Poynting thm. (EM conservation laws) to allow sim
 
 **NOTE**:  Use of Poynting thm. in steady state needs to be justified or discussed in the context of the literature
 
+Convert Pedersen and Hall current into Q,E_0 through Robinson formulas or other model-dependent parameterizations
+
 
