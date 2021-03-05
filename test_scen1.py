@@ -48,13 +48,7 @@ magE2=np.sum(Eperp**2,axis=2)
 SigmaP=-Spar/magE2
 
 
-# Recompute Ohmic dissipation (field-integrated) as a test
-[MLON,MLAT]=np.meshgrid(mlon,mlat)
-SigmaP_refi=sciint.interpn((mlonp,mlatp),np.transpose(SigmaP_ref),(MLON,MLAT)) # needs to be permuted as lon,lat
-dissipation=SigmaP_refi*magE2
-
-
-# plot some comparisons
+# plot some comparisons to verify correctness
 plt.subplots(1,2,dpi=100)
 
 plt.subplot(1,2,1)
@@ -69,8 +63,16 @@ plt.colorbar()
 plt.show()
 
 
+# Now try to estimate the Hall conductance using current continuity...
+
+
+
 # do debug plots?
 if flagSigP_debug:
+    # Recompute Ohmic dissipation (field-integrated) as a test
+    [MLON,MLAT]=np.meshgrid(mlon,mlat)
+    SigmaP_refi=sciint.interpn((mlonp,mlatp),np.transpose(SigmaP_ref),(MLON,MLAT)) # needs to be permuted as lon,lat
+    dissipation=SigmaP_refi*magE2
     plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref, \
                      SigmaP_ref,SigmaP_refi,magE2)
 
