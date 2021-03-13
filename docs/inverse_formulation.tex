@@ -30,14 +30,18 @@
 \pagebreak
 
 
-This document describes the mathematical formulation of the ARCS scenario 1 data inversion problem.  The measurements being made for scenario 1 will result in production of maps of magnetic field fluctuations $\Delta \mathbf{B}$, and flows $\mathbf{v}$.  These will be converted, as part of standard data processing, into parallel current density and electric field:
+This document describes the mathematical formulation of the ARCS scenario 1 data inversion problem.  The measurements being made for scenario 1 will result in production of maps of magnetic field fluctuations $\delta \mathbf{B}$, and flows $\mathbf{v}$.  These will be converted, as part of standard data processing, into parallel current density and electric field:
 \begin{equation}
-\mathbf{J} = \nabla \times \left( \frac{\Delta \mathbf{B}}{\mu_0} \right)
+\mathbf{J} = \nabla \times \left( \frac{\delta \mathbf{B}}{\mu_0} \right)
 \end{equation}
 \begin{equation}
 \mathbf{E} = -\mathbf{v} \times \mathbf{B}
 \end{equation}
-In the case of scenario 1 data, the key unknown physical parameters are the ionospheric Pedersen and Hall conductances.  
+In the case of scenario 1 data, the key unknown physical parameters are the ionospheric Pedersen and Hall conductances.  Poynting flux may also be calculated from the scenario 1 data:
+\begin{equation}
+\mathbf{S} = \mathbf{E} \times \frac{\delta \mathbf{B}}{\mu_0}
+\end{equation}
+
 
 \section{Physical constraints}
 
@@ -59,7 +63,43 @@ where $\mathbf{\mathcal{S}}_\perp$ is the column integrated perpendicular Poynti
 \begin{equation}
 \boxed{
 S_{\parallel}  = - \Sigma_P E^2
-}
+} \label{eqn:poynting}
 \end{equation}
+
+
+\section{Estimating conductances}
+
+Several different procedures can be developed for converting the maps of electric field and Poynting flux into conductances. Two approach are discussed here.   
+
+Equation \ref{eqn:poynting} fully specifies the Pedersen conductance given quantities that are measurable by scenario 1 experiments, so the most obvious path would be to then provide the Pedersen conductance to Equation \ref{eqn:continuity}.  Superficially, the equation allows solution for the gradient of the Hall conductance and in principle one would need to compute a line integral of this quantity to solve for Hall conductance:
+\begin{equation}
+\Sigma_H(\mathbf{r}_2)-\Sigma_H(\mathbf{r}_1) = \int_{\mathbf{r}_1}^{\mathbf{r}_2} \nabla \Sigma_H \cdot d \mathbf{r}
+\end{equation}
+Moreover, one would also need the value of the Hall condutance at some reference point $\mathbf{r}_1$ to complete the solution for Hall conductance.  While it may be possible to choose a point with low density and assume zero Hall conductance at that reference point there is a more serious issue with this approach and with the set of physical constraints being used, more generally.  Equation \ref{eqn:continuity} only provides constraints on the derivative of the Hall conductance \emph{in the direction of the $\mathbf{E} \times \mathbf{B}$ drift}.  Thus, there is information about the Hall conductance (namely the variation in the direction of the electric field) that is completely unconstrained by current continuity.  As a result, the Hall conductance lies partly in the null space of the problem defined by Equations \ref{eqn:continuity} and \ref{eqn:poynting} and some additional assumptions/information/regularization will be required to solve the inverse problem.  
+
+Another approach to the inverse problem would be to view the conservation laws as constraints to be combined together with other prior information in the form of, e.g., smoothness constraints.  Here we rewrite the physical constraints in a matrix form to facilitate application of results from linear inverse theory.  Field quantities can be ``flattened'' into vectors using column major ordering and then operators can be represented through matrix operations.  The latter step can be understood as a decomposition of the derivative operations into finite difference matrices:
+\begin{equation}
+\underline{j} = \underline{\underline{I}} ~ \underline{p} \left( \nabla \cdot \mathbf{E}_\perp \right) + \underline{\underline{L}}_x \underline{p} E_x + \underline{\underline{L}}_y \underline{p} E_y - \underline{\underline{L}}_{E \times B} \underline{h} E_\perp
+\end{equation}
+\begin{equation}
+\underline{s} = - E^2 \underline{\underline{I}} ~ \underline{p}
+\end{equation}
+Concatenating the unknown conductances into a single vector we get:
+\begin{equation}
+\underline{x} \equiv \left[ \begin{array}{c} \underline{p} \\ \underline{h} \end{array} \right]
+\end{equation}
+The left-hand sides of each conservation law (i.e. measurements) are similarly stacked:
+\begin{equation}
+\underline{b} \equiv \left[ \begin{array}{c} \underline{j} \\ \underline{s} \end{array} \right]
+\end{equation}
+Finally the right-hand side operations may be expressed in block diagonal form:
+\begin{equation}
+\underline{\underline{A}} \equiv \left[ \begin{array}{cc} \underline{\underline{I}}  \left( \nabla \cdot \mathbf{E}_\perp \right) +  \underline{\underline{L}}_x  E_x + \underline{\underline{L}}_y E_y  & ~ \underline{\underline{L}}_{E \times B} E_\perp \\ E^2 \underline{\underline{I}} & \underline{\underline{0}} \end{array} \right]
+\end{equation}
+Yielding our full set of constrains as:
+\begin{equation}
+\underline{\underline{A}} ~ \underline{x} = \underline{b}
+\end{equation}
+As discussed previously this system will not be full-rank, but serves as a starting point for a suitable generalized inverse for this problem.  
 
 \end{document}
