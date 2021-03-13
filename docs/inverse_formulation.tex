@@ -1,0 +1,48 @@
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[pdftex]{graphicx}
+\usepackage{natbib}
+\usepackage{fullpage}
+\usepackage{lineno}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{sidecap}
+\usepackage{hyperref}
+
+\begin{document}
+
+\setlength{\parindent}{0mm}
+\setlength{\parskip}{0.4cm}
+
+\bibliographystyle{apalike}
+
+%\modulolinenumbers[5]
+%\linenumbers
+
+\title{3D Elliptic Equations for GEMINI}
+
+\maketitle
+
+\tableofcontents
+
+\pagebreak
+
+
+This document describes the mathematical formulation of the ARCS scenario 1 data inversion problem.  The measurements being made for scenario 1 will result in production of maps of magnetic field fluctuations $\Delta \mathbf{B}$, and flows $\mathbf{v}$.  These will be converted, as part of standard data processing, into parallel current density and electric field:
+\begin{equation}
+\mathbf{J} = \nabla \times \left( \frac{\Delta \mathbf{B}}{\mu_0} \right)
+\end{equation}
+\begin{equation}
+\mathbf{E} = -\mathbf{v} \times \mathbf{B}
+\end{equation}
+
+
+\section{Physical constraints}
+
+\subsection{Parametric approximations of ionospheric conductivities}
+
+\subsection{Ionospheric potential problems sans source terms}
+
+\end{document}

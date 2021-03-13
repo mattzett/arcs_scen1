@@ -78,6 +78,10 @@ y=np.flip(southdist,axis=0)
 x=Re*np.sin(meantheta)*(phi-meanphi)
 
 
+# compute unit vectors for E,Exb basis
+
+
+
 # Now try to estimate the Hall conductance using current continuity...  We could
 #  formulate this as an estimation problem which the two conductances were estimated
 #  subject to the approximate constraints dictated by the conservation laws.  
