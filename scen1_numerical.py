@@ -59,7 +59,7 @@ def div2D(Ux,Uy,x,y):
 
 # construct a finite difference matrix for a single coordinate derivative over a 2D grid
 #  the matrix is returned in csr format so it can be indexed or used for sparse solutions
-def FDmat2D_Pedersen(x,y,scalex,scaley):
+def FDmat2D(x,y,scalex,scaley):
     dx=x[1]-x[0]
     dy=y[1]-y[0]
     lx=x.size; ly=y.size

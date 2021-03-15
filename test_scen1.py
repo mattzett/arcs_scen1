@@ -80,8 +80,9 @@ x=Re*np.sin(meantheta)*(phi-meanphi)
 lx=x.size; ly=y.size;
 
 
-# compute unit vectors for E,Exb basis, if needed?
-
+# compute unit vectors for E,Exb basis, if needed?  Assume b is in the minus z-direction
+Erotx=-Ey
+Eroty=Ex
 
 
 # Now try to estimate the Hall conductance using current continuity...  We could
@@ -90,9 +91,9 @@ lx=x.size; ly=y.size;
 #  1) try finite difference decomposition (non-parametric)
 #  2) basis expansion version if conditioning is poor
 # Use python modules/functions for FDEs
-[LxEx,LyEy]=FDmat2D_Pedersen(x,y,Ex,Ey)
+[LxEx,LyEy]=FDmat2D(x,y,Ex,Ey)
 I=scipy.sparse.eye(lx*ly,lx*ly)
-IdivE=I
+IdivE=I.tocsr()     # because we need to do elementwise mods later...
 divE=div2D(Ex,Ey,x,y)
 for ix in range(0,lx):
     for iy in range(0,ly):
@@ -107,11 +108,17 @@ for ix in range(0,lx):
         k=iy*lx+ix
         IdivE[k,k]=magE2[ix,iy]
 
-UR=
-LR=I*1     # my lazy way of generate a null matrix of the correct size
+[LxH,LyH]=FDmat2D(x,y,Erotx,Eroty)
+UR=LxH+LyH
+LR=I*0     # my lazy way of generate a null matrix of the correct size
+Uhstack=scipy.sparse.hstack([UL,UR])
+Lhstack=scipy.sparse.hstack([LL,LR])
+A=scipy.sparse.vstack([Lhstack,Uhstack])
+
 
 #  M=scipy.sparse.coo_matrix(ir,ic,Ment)      # uses same format as MUMPS
 #  SigH=scipy.sparse.linalg.spsolve(M,rhs)    # what backend is this using? can we force umfpack?
+
 
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
 #  Pedersen conductance.  Then can execute a line integral to get the Hall term.
