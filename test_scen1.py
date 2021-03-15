@@ -78,7 +78,7 @@ y=np.flip(southdist,axis=0)
 x=Re*np.sin(meantheta)*(phi-meanphi)
 
 
-# compute unit vectors for E,Exb basis
+# compute unit vectors for E,Exb basis, if needed?
 
 
 
