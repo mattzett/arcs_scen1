@@ -114,10 +114,11 @@ LR=I*0     # my lazy way of generate a null matrix of the correct size
 Uhstack=scipy.sparse.hstack([UL,UR])
 Lhstack=scipy.sparse.hstack([LL,LR])
 A=scipy.sparse.vstack([Lhstack,Uhstack])
+b=np.concatenate((Jpar.flatten(order="F"),Spar.flatten(order="F")),axis=0)
 
-
-#  M=scipy.sparse.coo_matrix(ir,ic,Ment)      # uses same format as MUMPS
-#  SigH=scipy.sparse.linalg.spsolve(M,rhs)    # what backend is this using? can we force umfpack?
+sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b)    # what backend is this using? can we force umfpack?
+sigPinv=np.reshape(sigs[0:lx*ly],[lx,ly])
+sigHinv=np.reshape(sigs[lx*ly:],[lx,ly])
 
 
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
