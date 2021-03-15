@@ -16,7 +16,7 @@ import scipy.io as spio
 import matplotlib.pyplot as plt
 import scipy.interpolate, scipy.sparse, scipy.sparse.linalg
 from plot_fns import plotSigmaP_debug
-from scen1_numerical import div2D
+from scen1_numerical import div2D,FDmat2D
 
 # setup
 plt.close("all")
@@ -30,6 +30,7 @@ Re=6370e3
 filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")
+Ex=np.squeeze(E[0,:,:,0]); Ey=np.squeeze(E[0,:,:,0]);
 Jpar=np.asarray(data["Jpar"],dtype="float64")
 Spar=np.transpose(np.asarray(data["Spar"],dtype="float64"))
 mlon=np.asarray(data["mlon"],dtype="float64")
@@ -76,6 +77,7 @@ meanphi=np.average(phi)
 southdist=Re*(theta-meantheta)
 y=np.flip(southdist,axis=0)
 x=Re*np.sin(meantheta)*(phi-meanphi)
+lx=x.size; ly=y.size;
 
 
 # compute unit vectors for E,Exb basis, if needed?
@@ -88,6 +90,26 @@ x=Re*np.sin(meantheta)*(phi-meanphi)
 #  1) try finite difference decomposition (non-parametric)
 #  2) basis expansion version if conditioning is poor
 # Use python modules/functions for FDEs
+[LxEx,LyEy]=FDmat2D_Pedersen(x,y,Ex,Ey)
+I=scipy.sparse.eye(lx*ly,lx*ly)
+IdivE=I
+divE=div2D(Ex,Ey,x,y)
+for ix in range(0,lx):
+    for iy in range(0,ly):
+        k=iy*lx+ix
+        IdivE[k,k]=divE[ix,iy]
+magE=np.sqrt(magE2)
+UL=IdivE + LxEx + LyEy
+
+LL=I
+for ix in range(0,lx):
+    for iy in range(0,ly):
+        k=iy*lx+ix
+        IdivE[k,k]=magE2[ix,iy]
+
+UR=
+LR=I*1     # my lazy way of generate a null matrix of the correct size
+
 #  M=scipy.sparse.coo_matrix(ir,ic,Ment)      # uses same format as MUMPS
 #  SigH=scipy.sparse.linalg.spsolve(M,rhs)    # what backend is this using? can we force umfpack?
 
@@ -99,6 +121,7 @@ x=Re*np.sin(meantheta)*(phi-meanphi)
 [gradSigPx,gradSigPy]=np.gradient(SigmaP,x,y)
 divE=div2D(Eperp[:,:,0],Eperp[:,:,1],x,y)
 gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
+
 
 
 # check some of the calculations, gradients, divergences
