@@ -53,22 +53,6 @@ magE2=np.sum(Eperp**2,axis=2)
 SigmaP=-Spar/magE2
 
 
-# plot some comparisons to verify correctness
-if flagdebug:
-    plt.subplots(1,2,dpi=100)
-    
-    plt.subplot(1,2,1)
-    plt.pcolormesh(mlon,mlat,SigmaP)
-    plt.title("Estimated Pedersen")
-    plt.colorbar()
-    
-    plt.subplot(1,2,2)
-    plt.pcolormesh(mlonp,mlatp,SigmaP_ref)
-    plt.title("Reference Pedersen")
-    plt.colorbar()
-    plt.show()
-
-
 # map magnetic coordinates to Cartesian to facilitate differencing and "fitting"
 theta=np.pi/2-np.deg2rad(mlat)
 meantheta=np.average(theta)
@@ -102,32 +86,36 @@ for ix in range(0,lx):
 magE=np.sqrt(magE2)
 UL=IdivE + LxEx + LyEy
 
-LL=I
+LL=I.tocsr()
 for ix in range(0,lx):
     for iy in range(0,ly):
         k=iy*lx+ix
-        IdivE[k,k]=magE2[ix,iy]
+        LL[k,k]=-magE2[ix,iy]
 
 [LxH,LyH]=FDmat2D(x,y,Erotx,Eroty)
-UR=LxH+LyH
+UR=-LxH-LyH
 LR=I*0     # my lazy way of generate a null matrix of the correct size
+
+
+# determine a scaling for current density and Poynting flux problems (separately) and apply to matrix elms.
+scaleS=np.max(abs(Spar))
+scaleJ=np.max(abs(Jpar))
 Uhstack=scipy.sparse.hstack([UL,UR])
 Lhstack=scipy.sparse.hstack([LL,LR])
-A=scipy.sparse.vstack([Lhstack,Uhstack])
-b=np.concatenate((Jpar.flatten(order="F"),Spar.flatten(order="F")),axis=0)
-
-sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b)    # what backend is this using? can we force umfpack?
+A=scipy.sparse.vstack([Uhstack/scaleJ,Lhstack/scaleS])
+b=np.concatenate((Jpar.flatten(order="F")/scaleJ,Spar.flatten(order="F")/scaleS),axis=0)    # make sure to use column-major ordering
+sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b,use_umfpack=True)    # what backend is this using? can we force umfpack?
 sigPnoreg=np.reshape(sigs[0:lx*ly],[lx,ly])
 sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
 
 
 # regularization of the problem (Tikhonov)
-regparm=0.05
+regparm=1e-9
 bprime=A.transpose()@b
 Aprime=(A.transpose()@A + regparm*scipy.sparse.eye(2*lx*ly,2*lx*ly))
-xreg=scipy.sparse.linalg.spsolve(Aprime,bprime)
-sigPreg=np.reshape(xreg[0:lx*ly],[lx,ly])
-sigHreg=np.reshape(xreg[lx*ly:],[lx,ly])
+sigsreg=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
+sigPreg=np.reshape(sigsreg[0:lx*ly],[lx,ly])
+sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly])
 
 
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
@@ -142,6 +130,20 @@ gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
 
 
 # check some of the calculations, gradients, divergences
+if flagdebug:
+    plt.subplots(1,2,dpi=100)
+    
+    plt.subplot(1,2,1)
+    plt.pcolormesh(mlon,mlat,SigmaP)
+    plt.title("Estimated Pedersen")
+    plt.colorbar()
+    
+    plt.subplot(1,2,2)
+    plt.pcolormesh(mlonp,mlatp,SigmaP_ref)
+    plt.title("Reference Pedersen")
+    plt.colorbar()
+    plt.show()
+    
 if flagdebug:
     plt.subplots(1,3)
     
@@ -162,7 +164,6 @@ if flagdebug:
     plt.colorbar()
     plt.show()
     
-    
 if flagdebug:
     plt.figure()
     plt.pcolormesh(x,y,gradSigHproj)
@@ -170,10 +171,22 @@ if flagdebug:
     plt.ylabel("y (km)")
     plt.colorbar()
     
-    
 if flagdebug:
-    plt.figure()
+    plt.subplots(1,2)
     
+    plt.subplot(1,2,1)
+    plt.pcolormesh(x,y,sigPreg.transpose())
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("Regularized $\Sigma_P$")
+    plt.colorbar()    
+    
+    plt.subplot(1,2,2)
+    plt.pcolormesh(x,y,sigPreg.transpose())
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("Regularized $\Sigma_H$")    
+    plt.colorbar()
 
 
 # do some extra debug plots?
