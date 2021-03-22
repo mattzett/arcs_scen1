@@ -94,7 +94,7 @@ The left-hand sides of each conservation law (i.e. measurements) are similarly s
 \end{equation}
 Finally the right-hand side operations may be expressed in block diagonal form:
 \begin{equation}
-\underline{\underline{A}} \equiv \left[ \begin{array}{cc} \underline{\underline{I}}  \left( \nabla \cdot \mathbf{E}_\perp \right) +  \underline{\underline{L}}_x  E_x + \underline{\underline{L}}_y E_y  & ~ \underline{\underline{L}}_{E \times B} E_\perp \\ E^2 \underline{\underline{I}} & \underline{\underline{0}} \end{array} \right]
+\underline{\underline{A}} \equiv \left[ \begin{array}{cc} \underline{\underline{I}}  \left( \nabla \cdot \mathbf{E}_\perp \right) +  \underline{\underline{L}}_x  E_x + \underline{\underline{L}}_y E_y  & ~ \underline{\underline{L}}_{E \times B} E_\perp \\ -E^2 \underline{\underline{I}} & \underline{\underline{0}} \end{array} \right]
 \end{equation}
 Yielding our full set of constrains as:
 \begin{equation}
@@ -105,6 +105,16 @@ As discussed previously this system will not be full-rank, but serves as a start
 
 \section{Maximum likelihood estimator}
 
+The maximum likelihood estimator, assuming Gaussian-distributed noise is:
+\begin{equation}
+\hat{x}_{ML} = \left( A^T A  \right)^{-1} A^T b
+\end{equation}
+The matrix to be inverted here is singular for reasons noted previously; we adopt a Tikhonov regularization scheme to mitigate this:
+\begin{equation}
+\hat{x} = \left( A^T A  + \lambda I \right)^{-1} A^T b
+\end{equation}
+
+FIXME: Need to add error covariances!!!
 
 
 \end{document}
