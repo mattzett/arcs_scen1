@@ -117,8 +117,17 @@ A=scipy.sparse.vstack([Lhstack,Uhstack])
 b=np.concatenate((Jpar.flatten(order="F"),Spar.flatten(order="F")),axis=0)
 
 sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b)    # what backend is this using? can we force umfpack?
-sigPinv=np.reshape(sigs[0:lx*ly],[lx,ly])
-sigHinv=np.reshape(sigs[lx*ly:],[lx,ly])
+sigPnoreg=np.reshape(sigs[0:lx*ly],[lx,ly])
+sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
+
+
+# regularization of the problem (Tikhonov)
+regparm=0.05
+bprime=A.transpose()@b
+Aprime=(A.transpose()@A + regparm*scipy.sparse.eye(2*lx*ly,2*lx*ly))
+xreg=scipy.sparse.linalg.spsolve(Aprime,bprime)
+sigPreg=np.reshape(xreg[0:lx*ly],[lx,ly])
+sigHreg=np.reshape(xreg[lx*ly:],[lx,ly])
 
 
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
@@ -160,6 +169,11 @@ if flagdebug:
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
+    
+    
+if flagdebug:
+    plt.figure()
+    
 
 
 # do some extra debug plots?
