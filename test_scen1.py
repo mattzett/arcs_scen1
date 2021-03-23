@@ -30,7 +30,7 @@ Re=6370e3
 filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")
-Ex=np.squeeze(E[0,:,:,0]); Ey=np.squeeze(E[0,:,:,0]);
+Ex=np.squeeze(E[0,:,:,0]); Ey=np.squeeze(E[0,:,:,1]);
 Jpar=np.asarray(data["Jpar"],dtype="float64")
 Spar=np.transpose(np.asarray(data["Spar"],dtype="float64"))
 mlon=np.asarray(data["mlon"],dtype="float64")
@@ -97,13 +97,18 @@ UR=-LxH-LyH
 LR=I*0     # my lazy way of generate a null matrix of the correct size
 
 
-# determine a scaling for current density and Poynting flux problems (separately) and apply to matrix elms.
-scaleS=np.max(abs(Spar))
-scaleJ=np.max(abs(Jpar))
+# determine a scaling for current density and Poynting flux problems (separately) 
+#  and apply to matrix elms.  The scaling does seem to be necessary to achieve a 
+#  decent inversion since the parameters/equations are heterogeneous (different units)
+#scaleS=np.max(abs(Spar))
+#scaleJ=np.max(abs(Jpar))
+scaleJ=1; scaleS=1;
 Uhstack=scipy.sparse.hstack([UL,UR])
 Lhstack=scipy.sparse.hstack([LL,LR])
 A=scipy.sparse.vstack([Uhstack/scaleJ,Lhstack/scaleS])
-b=np.concatenate((Jpar.flatten(order="F")/scaleJ,Spar.flatten(order="F")/scaleS),axis=0)    # make sure to use column-major ordering
+jvec=Jpar.flatten(order="F")
+svec=Spar.flatten(order="F")
+b=np.concatenate((jvec/scaleJ,svec/scaleS),axis=0)    # make sure to use column-major ordering
 sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b,use_umfpack=True)    # what backend is this using? can we force umfpack?
 sigPnoreg=np.reshape(sigs[0:lx*ly],[lx,ly])
 sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
@@ -111,8 +116,9 @@ sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
 
 # regularization of the problem (Tikhonov)
 regparm=1e-9
+regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
 bprime=A.transpose()@b
-Aprime=(A.transpose()@A + regparm*scipy.sparse.eye(2*lx*ly,2*lx*ly))
+Aprime=(A.transpose()@A + regparm*regkern)
 sigsreg=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
 sigPreg=np.reshape(sigsreg[0:lx*ly],[lx,ly])
 sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly])
@@ -131,16 +137,21 @@ gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
 
 # check some of the calculations, gradients, divergences
 if flagdebug:
-    plt.subplots(1,2,dpi=100)
+    plt.subplots(1,3,dpi=100)
     
-    plt.subplot(1,2,1)
+    plt.subplot(1,3,1)
     plt.pcolormesh(mlon,mlat,SigmaP)
     plt.title("Estimated Pedersen")
     plt.colorbar()
     
-    plt.subplot(1,2,2)
+    plt.subplot(1,3,2)
     plt.pcolormesh(mlonp,mlatp,SigmaP_ref)
     plt.title("Reference Pedersen")
+    plt.colorbar()
+    
+    plt.subplot(1,3,3)
+    plt.pcolormesh(mlonp,mlatp,SigmaH_ref)
+    plt.title("Reference Hall")
     plt.colorbar()
     plt.show()
     

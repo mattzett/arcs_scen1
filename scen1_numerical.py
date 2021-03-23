@@ -94,11 +94,11 @@ def FDmat2D(x,y,scalex,scaley):
             else:    
                 ir[ient]=k
                 ic[ient]=k-1
-                L[ient]=-1/dx*scalex[ix,iy]
+                L[ient]=-1/2/dx*scalex[ix,iy]
                 ient=ient+1
                 ir[ient]=k
                 ic[ient]=k+1
-                L[ient]=1/dx*scalex[ix,iy]
+                L[ient]=1/2/dx*scalex[ix,iy]
                 ient=ient+1                
     Lx=scipy.sparse.coo_matrix( (L,(ir,ic)), shape=(lx*ly,lx*ly) )
     Lx=Lx.tocsr()
@@ -133,11 +133,11 @@ def FDmat2D(x,y,scalex,scaley):
             else: 
                 ir[ient]=k
                 ic[ient]=k-lx
-                L[ient]=-1/dy*scaley[ix,iy]
+                L[ient]=-1/2/dy*scaley[ix,iy]
                 ient=ient+1
                 ir[ient]=k
                 ic[ient]=k+lx
-                L[ient]=1/dy*scaley[ix,iy]
+                L[ient]=1/2/dy*scaley[ix,iy]
                 ient=ient+1
     Ly=scipy.sparse.coo_matrix( (L,(ir,ic)), shape=(lx*ly,lx*ly) )  
     Ly=Ly.tocsr()
