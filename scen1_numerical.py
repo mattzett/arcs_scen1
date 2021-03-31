@@ -89,7 +89,7 @@ def FDmat2D(x,y,scalex,scaley):
                 ient=ient+1
                 ir[ient]=k
                 ic[ient]=k
-                L[ient]=-1/dx
+                L[ient]=1/dx*scalex[ix,iy]
                 ient=ient+1                
             else:    
                 ir[ient]=k

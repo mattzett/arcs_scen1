@@ -115,13 +115,70 @@ sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
 
 
 # regularization of the problem (Tikhonov)
-regparm=1e-9
+regparm=1e-22
 regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
+# regkern=regkern.tocsr(copy=True)
+# for k in range(0,2*lx*ly):
+#     if (k>=lx*ly):
+#         regkern[k,k]=1/10
+#     else:
+#         regkern[k,k]=1
 bprime=A.transpose()@b
 Aprime=(A.transpose()@A + regparm*regkern)
 sigsreg=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
 sigPreg=np.reshape(sigsreg[0:lx*ly],[lx,ly])
 sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly])
+
+
+# test various subcomponents of inverse problem
+#  first a sanity check on the Poynting thm. (lower left block of full matrix)
+ALL=LL;
+bLL=svec;
+xLL=scipy.sparse.linalg.spsolve(ALL,bLL)
+sigPLL=np.reshape(xLL,[lx,ly])
+sigPLL=sigPLL.transpose()
+
+
+# try to use FD matrices to do a gradient to check that operators are being formed correctly
+thetap=np.pi/2-np.deg2rad(mlatp)
+meanthetap=np.average(thetap)
+phip=np.deg2rad(mlonp)
+meanphip=np.average(phip)
+southdistp=Re*(thetap-meanthetap)
+yp=np.flip(southdistp,axis=0)
+xp=Re*np.sin(meanthetap)*(phip-meanphip)
+interpolant=scipy.interpolate.interp2d(xp,yp,SigmaP_ref)
+SigmaP_refi=interpolant(x,y)
+[Lx,Ly]=FDmat2D(x,y,np.ones(Ex.shape),np.ones(Ey.shape))
+SigPvec=SigmaP_refi.flatten(order="F")
+gradSigPxvec=Lx@SigPvec
+gradSigPxmat=np.reshape(gradSigPxvec,[lx,ly],order="F")
+gradSigPyvec=Ly@SigPvec
+gradSigPymat=np.reshape(gradSigPyvec,[lx,ly],order="F")
+
+
+# next try a system with no Hall current divergence (this is already nearly the case for our test example)
+AUL=UL
+IUL=scipy.sparse.eye(lx*ly,lx*ly)
+AULprime=(AUL.transpose()@AUL+1e-21*IUL)
+bUL=-1*jvec     # seems to be a sign convention issue here???
+bULprime=AUL.transpose()@bUL
+#xUL=scipy.sparse.linalg.spsolve(AUL,bUL)
+xUL=scipy.sparse.linalg.spsolve(AULprime,bULprime)
+sigPUL=np.reshape(xUL,[lx,ly],order="F")
+
+
+# just current continuity with Pedersen terms requires regularization what about adding in the Poynting thm. to the inversion???
+AULLL=scipy.sparse.vstack([UL,LL])   # overdetermined system
+bULLLprime=AULLL.transpose()@b
+AULLLprime=(AULLL.transpose()@AULLL)    # don't regularize since overdetermined, simple Moore-Penrose approach
+xULLL=scipy.sparse.linalg.spsolve(AULLLprime,bULLLprime)
+sigPULLL=np.reshape(xULLL,[lx,ly],order="F")
+
+
+# now try to recover the current density from matrix-computed conductivity gradients as a check
+jvectest=-1*UL@SigPvec     #possibly a sign convention issue here???
+jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 
 
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
@@ -132,7 +189,6 @@ sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly])
 [gradSigPx,gradSigPy]=np.gradient(SigmaP,x,y)
 divE=div2D(Eperp[:,:,0],Eperp[:,:,1],x,y)
 gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
-
 
 
 # check some of the calculations, gradients, divergences
@@ -153,7 +209,7 @@ if flagdebug:
     plt.pcolormesh(mlonp,mlatp,SigmaH_ref)
     plt.title("Reference Hall")
     plt.colorbar()
-    plt.show()
+    plt.show(block=False)
     
 if flagdebug:
     plt.subplots(1,3)
@@ -163,24 +219,64 @@ if flagdebug:
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
+    plt.title("Numerical $\\nabla \Sigma_P \cdot \mathbf{e}_x$")
     
     plt.subplot(1,3,2)
     plt.pcolormesh(x,y,gradSigPy)
     plt.xlabel("x (km)")
     plt.colorbar()
-    
+    plt.title("Numerical $\\nabla \Sigma_P \cdot \mathbf{e}_y$")
+   
     plt.subplot(1,3,3)
     plt.pcolormesh(x,y,divE)
     plt.xlabel("x (km)")
     plt.colorbar()
-    plt.show()
+    plt.title("Numerical $\\nabla \cdot \mathbf{E}$")
+    plt.show(block=False)
+
+if flagdebug:
+    plt.subplots(1,2,dpi=100)
     
+    plt.subplot(1,2,1)
+    plt.pcolormesh(x,y,gradSigPxmat)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.colorbar()
+    plt.title("Matrix $\\nabla \Sigma_P \cdot \mathbf{e}_x$")
+    
+    plt.subplot(1,2,2)
+    plt.pcolormesh(x,y,gradSigPymat)
+    plt.xlabel("x (km)")
+    plt.colorbar()
+    plt.title("Matrix $\\nabla \Sigma_P \cdot \mathbf{e}_y$")
+    plt.show(block=False)
+
+if flagdebug:
+    plt.subplots(1,2)
+    
+    plt.subplot(1,2,1)
+    plt.pcolormesh(x,y,jvectestmat)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.colorbar()
+    plt.title("$J_\parallel$ computed from matrix operator")
+    
+    plt.subplot(1,2,2)
+    plt.pcolormesh(x,y,Jpar)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.colorbar()
+    plt.title("$J_\parallel$ from model")    
+    plt.show(block=False)
+
 if flagdebug:
     plt.figure()
     plt.pcolormesh(x,y,gradSigHproj)
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
+    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction")
+    plt.show(block=False)
     
 if flagdebug:
     plt.subplots(1,2)
@@ -189,15 +285,43 @@ if flagdebug:
     plt.pcolormesh(x,y,sigPreg.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
-    plt.title("Regularized $\Sigma_P$")
+    plt.title("Full Operator Regularized $\Sigma_P$")
     plt.colorbar()    
     
     plt.subplot(1,2,2)
-    plt.pcolormesh(x,y,sigPreg.transpose())
+    plt.pcolormesh(x,y,sigHreg.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
-    plt.title("Regularized $\Sigma_H$")    
+    plt.title("Full Operator Regularized $\Sigma_H$")    
     plt.colorbar()
+    plt.show(block=False)
+    
+if flagdebug:
+    plt.subplots(1,2)
+    
+    plt.subplot(1,2,1)
+    plt.pcolormesh(x,y,sigPLL)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("$\Sigma_P$ via Poynting")
+    plt.colorbar()    
+    
+    plt.subplot(1,2,2)
+    plt.pcolormesh(x,y,sigPUL)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("$\Sigma_P$ via current continuity")    
+    plt.colorbar()    
+    plt.show(block=False)
+
+if flagdebug:
+    plt.figure(dpi=100)
+    plt.pcolormesh(x,y,sigPULLL)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("$\Sigma_P$ via current continuity and Poynting combined")    
+    plt.colorbar()    
+    plt.show(block=False)    
 
 
 # do some extra debug plots?
