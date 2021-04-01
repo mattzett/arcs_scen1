@@ -115,7 +115,7 @@ sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
 
 
 # regularization of the problem (Tikhonov)
-regparm=1e-22
+regparm=1e-28
 regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
 # regkern=regkern.tocsr(copy=True)
 # for k in range(0,2*lx*ly):
@@ -149,8 +149,8 @@ yp=np.flip(southdistp,axis=0)
 xp=Re*np.sin(meanthetap)*(phip-meanphip)
 interpolant=scipy.interpolate.interp2d(xp,yp,SigmaP_ref)
 SigmaP_refi=interpolant(x,y)
-[Lx,Ly]=FDmat2D(x,y,np.ones(Ex.shape),np.ones(Ey.shape))
 SigPvec=SigmaP_refi.flatten(order="F")
+[Lx,Ly]=FDmat2D(x,y,np.ones(Ex.shape),np.ones(Ey.shape))
 gradSigPxvec=Lx@SigPvec
 gradSigPxmat=np.reshape(gradSigPxvec,[lx,ly],order="F")
 gradSigPyvec=Ly@SigPvec
@@ -181,6 +181,14 @@ jvectest=-1*UL@SigPvec     #possibly a sign convention issue here???
 jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 
 
+# compute the project of the Hall conductance gradient using matrix operators
+interpolant=scipy.interpolate.interp2d(xp,yp,SigmaH_ref)
+SigmaH_refi=interpolant(x,y)
+SigHvec=SigmaH_refi.flatten(order="F")
+gradSigHprojvec=(LxH+LyH)@SigHvec
+gradSigHprojmat=np.reshape(gradSigHprojvec,[lx,ly],order="F")
+
+
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
 #  Pedersen conductance.  Then can execute a line integral to get the Hall term.
 #  We do need to choose a location with very low Pedersen conductance for our reference
@@ -188,7 +196,10 @@ jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 #  the ExB direction so this may not be a suitable option!!!
 [gradSigPx,gradSigPy]=np.gradient(SigmaP,x,y)
 divE=div2D(Eperp[:,:,0],Eperp[:,:,1],x,y)
-gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
+#gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
+gradSigHproj=SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]-Jpar    # Hall term from current continuity
+[gradSigHx,gradSigHy]=np.gradient(SigmaH_refi,x,y)
+gradSigHprojFD=Erotx*gradSigHx+Eroty*gradSigHy
 
 
 # check some of the calculations, gradients, divergences
@@ -270,12 +281,28 @@ if flagdebug:
     plt.show(block=False)
 
 if flagdebug:
-    plt.figure()
+    plt.subplots(1,3)
+    
+    plt.subplot(1,3,1)
     plt.pcolormesh(x,y,gradSigHproj)
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
-    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction")
+    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction (CC)")
+    
+    plt.subplot(1,3,2)
+    plt.pcolormesh(x,y,gradSigHprojmat)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.colorbar()
+    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction (matrix)")
+
+    plt.subplot(1,3,3)
+    plt.pcolormesh(x,y,gradSigHprojFD)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.colorbar()
+    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction (FD)")    
     plt.show(block=False)
     
 if flagdebug:
