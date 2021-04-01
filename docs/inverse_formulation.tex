@@ -30,20 +30,31 @@
 \pagebreak
 
 
-This document describes the mathematical formulation of the ARCS scenario 1 data inversion problem.  The measurements being made for scenario 1 will result in production of maps of magnetic field fluctuations $\delta \mathbf{B}$, and flows $\mathbf{v}$.  These will be converted, as part of standard data processing, into parallel current density and electric field:
+This document describes the mathematical formulation of the ARCS scenario 1 data inversion problem.  
+
+
+\section{Summary}
+
+Measurements being made for ARCS scenario 1 crossings will result in production of maps of magnetic field fluctuations $\delta \mathbf{B}$, and flows $\mathbf{v}$ as described in the various instrument and data processing section.  These will be converted, as part of standard data processing, into parallel current density and electric field:
 \begin{equation}
-\mathbf{J} = \nabla \times \left( \frac{\delta \mathbf{B}}{\mu_0} \right)
+\mathbf{J} = \nabla \times \left( \frac{\delta \mathbf{B}}{\mu_0} \right); \qquad \mathbf{E} = -\mathbf{v} \times \mathbf{B}
 \end{equation}
-\begin{equation}
-\mathbf{E} = -\mathbf{v} \times \mathbf{B}
-\end{equation}
-In the case of scenario 1 data, the key unknown physical parameters are the ionospheric Pedersen and Hall conductances.  Poynting flux may also be calculated from the scenario 1 data:
+Because this is a swarm of satellites we will have \emph{datamaps} (2D images) of these parameters; additionally we note that the measurements may be directly used to also produce datamaps of Poynting flux:
 \begin{equation}
 \mathbf{S} = \mathbf{E} \times \frac{\delta \mathbf{B}}{\mu_0}
 \end{equation}
+In the case of scenario 1 data,  key unknown physical parameters are datamaps of ionospheric Pedersen and Hall conductances - without these we do not have a full picture of electrodynamics and energy flow in the auroral system and cannot, then, fully unlock the scientific potential of the large amount of scenario 1 data.  
+
+Scenario 1 current density and Poynting flux Datamaps are related to each other through electromagnetic conservation laws:  current continuity and the Poynting theorem.  Under assumptions of steady state conditions and equipotential field lines (appropriate at scales relevant to our science questions), these can be reduced to:
+\begin{eqnarray}
+J_\parallel &=& \Sigma_P \nabla \cdot \mathbf{E}_\perp + \nabla \Sigma_P \cdot \mathbf{E}_\perp - \nabla \Sigma_H \cdot \left( \mathbf{E}_\perp \times \hat{\mathbf{b}} \right) \\
+S_{\parallel}  &=& - \Sigma_P E^2
+\end{eqnarray}
+with unknown Pedersen and Hall conductances.  These conductances may, in principle, be solved by simply inverting this system of equations.  In practice there are many different methods that could work to perform this inversion.  A first glance the system appears even-determined on account of the fact that we have two unknown fields (conductances) and two input datamaps (conserved variables current density and Poynting flux).  It is worth noting however, that the component of the Hall conductance gradient along the electric field direction is explicitly not part of this equation and so is in the null space of the problem.  Thus in addition to conservation laws additional prior information is needed.  For ARCS data processing this will come in two forms (both of which may not always be necessary depending on noise conditions):  (1) regularization that places constrains on solution norm or smoothness (i.e. Tikhonov regularization), and/or (2) inclusion of model information that further correlates Pedersen conductance (which is well-constrained by laws above) to Hall conductance (which requires further constraints).   This could come in the form of model-based inversions (e.g. using GEMINI-GLOW) or simply parameerizations based, e.g. on the Robinson formulas or updated version of these formulas.  
 
 
-\section{Physical constraints}
+
+\section{Physical constraints:  simplification of general conservation laws}
 
 The current continuity equation, here used in field-integrated form, relates electric fields and conductances to current:
 \begin{equation}
