@@ -65,9 +65,10 @@ lx=x.size; ly=y.size;
 
 
 # compute unit vectors for E,Exb basis, if needed?  Assume b is in the minus z-direction
+#Erotx=-Ey
+#Eroty=Ex
 Erotx=-Ey
 Eroty=Ex
-
 
 # Now try to estimate the Hall conductance using current continuity...  We could
 #  formulate this as an estimation problem which the two conductances were estimated
@@ -160,8 +161,8 @@ gradSigPymat=np.reshape(gradSigPyvec,[lx,ly],order="F")
 # next try a system with no Hall current divergence (this is already nearly the case for our test example)
 AUL=UL
 IUL=scipy.sparse.eye(lx*ly,lx*ly)
-AULprime=(AUL.transpose()@AUL+1e-21*IUL)
-bUL=-1*jvec     # seems to be a sign convention issue here???
+AULprime=(AUL.transpose()@AUL+1e-18*IUL)
+bUL=jvec     # seems to be a sign convention issue here???
 bULprime=AUL.transpose()@bUL
 #xUL=scipy.sparse.linalg.spsolve(AUL,bUL)
 xUL=scipy.sparse.linalg.spsolve(AULprime,bULprime)
@@ -177,7 +178,7 @@ sigPULLL=np.reshape(xULLL,[lx,ly],order="F")
 
 
 # now try to recover the current density from matrix-computed conductivity gradients as a check
-jvectest=-1*UL@SigPvec     #possibly a sign convention issue here???
+jvectest=UL@SigPvec     #possibly a sign convention issue here???
 jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 
 
@@ -195,9 +196,10 @@ gradSigHprojmat=np.reshape(gradSigHprojvec,[lx,ly],order="F")
 #  Hall conductance location.  The issue is that this only gives the the projection along
 #  the ExB direction so this may not be a suitable option!!!
 [gradSigPx,gradSigPy]=np.gradient(SigmaP,x,y)
-divE=div2D(Eperp[:,:,0],Eperp[:,:,1],x,y)
+#divE=div2D(Ex,Ey,x,y)
 #gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
-gradSigHproj=SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]-Jpar    # Hall term from current continuity
+#gradSigHproj=SigmaP*divE+gradSigPx*Ex+gradSigPy*Ey-Jpar    # Hall term from current continuity
+gradSigHproj=gradSigPx*Ex+gradSigPy*Ey-Jpar    # Hall term from current continuity
 [gradSigHx,gradSigHy]=np.gradient(SigmaH_refi,x,y)
 gradSigHprojFD=Erotx*gradSigHx+Eroty*gradSigHy
 
