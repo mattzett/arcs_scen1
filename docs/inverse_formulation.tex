@@ -56,13 +56,29 @@ with unknown Pedersen and Hall conductances.  These conductances may, in princip
 
 \section{Physical constraints:  simplification of general conservation laws}
 
-The current continuity equation, here used in field-integrated form, relates electric fields and conductances to current:
+Conservation of charge in electromagnetic system is described by the current continuity equation:
+\begin{equation}
+  \frac{\partial \rho}{\partial t} + \nabla \cdot \mathbf{J} = 0
+\end{equation}
+In a steady state this reduces to:
+\begin{equation}
+\nabla \cdot \mathbf{J} = \frac{\partial J_\parallel}{\partial z} +  \nabla_\perp \cdot \mathbf{J}_\perp = 0,
+\end{equation}
+where the $z-$ direction represent altitude in a locally Cartesian coordinate system.  Integrating with respect to altitude:
+\begin{equation}
+\int \frac{\partial J_\parallel}{\partial z} dz +  \int \nabla_\perp \cdot \mathbf{J}_\perp dz = J_\parallel(\max(z)) - J_\parallel(\min(z)) + \nabla_\perp \cdot \left(  \Sigma \cdot \mathbf{E}_\perp \right) = 0
+\end{equation}
+Which can be expanded out and solved for the parallel current at the top of the domain, if the bottom current is assumed to be zero:
+\begin{equation}
+J_\parallel = - \nabla_\perp \cdot \left(  \Sigma \cdot \mathbf{E}_\perp \right) =  - \Sigma_P \nabla \cdot \mathbf{E}_\perp - \nabla \Sigma_P \cdot \mathbf{E}_\perp + \nabla \Sigma_H \cdot \left( \mathbf{E}_\perp \times \hat{\mathbf{b}} \right)
+\end{equation}
+The current continuity equation to be used in the ARCS analysis is then:
 \begin{equation}
 \boxed{
-J_\parallel = \Sigma_P \nabla \cdot \mathbf{E}_\perp + \nabla \Sigma_P \cdot \mathbf{E}_\perp - \nabla \Sigma_H \cdot \left( \mathbf{E}_\perp \times \hat{\mathbf{b}} \right)
+J_\parallel = -\Sigma_P \nabla \cdot \mathbf{E}_\perp - \nabla \Sigma_P \cdot \mathbf{E}_\perp + \nabla \Sigma_H \cdot \left( \mathbf{E}_\perp \times \hat{\mathbf{b}} \right)
 } \label{eqn:continuity}
 \end{equation}
-Note that this equation effectively has two unknown fields $\Sigma_P,\Sigma_H$, but represents only one physical constraint; hence additional information is needed.  This is found in the form of the Poynting theorem:
+Note that this equation effectively has two unknown fields $\Sigma_P,\Sigma_H$, but represents only one physical constraint; hence additional information is needed.  This is provided by conservation of electromagnetic energy, viz. the Poynting theorem:
 \begin{equation}
 \frac{\partial w}{\partial t} + \nabla \cdot \mathbf{S} = - \mathbf{J} \cdot \mathbf{E}
 \end{equation}

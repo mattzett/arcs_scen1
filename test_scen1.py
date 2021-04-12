@@ -86,6 +86,7 @@ for ix in range(0,lx):
         IdivE[k,k]=divE[ix,iy]
 magE=np.sqrt(magE2)
 UL=IdivE + LxEx + LyEy
+UL=-UL
 
 LL=I.tocsr()
 for ix in range(0,lx):
@@ -95,6 +96,8 @@ for ix in range(0,lx):
 
 [LxH,LyH]=FDmat2D(x,y,Erotx,Eroty)
 UR=-LxH-LyH
+UR=-UR
+
 LR=I*0     # my lazy way of generate a null matrix of the correct size
 
 
@@ -178,6 +181,7 @@ sigPULLL=np.reshape(xULLL,[lx,ly],order="F")
 
 
 # now try to recover the current density from matrix-computed conductivity gradients as a check
+#  note that we neglect hall currents for now since they are small
 jvectest=UL@SigPvec     #possibly a sign convention issue here???
 jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 
@@ -290,21 +294,21 @@ if flagdebug:
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
-    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction (CC)")
+    plt.title("Projection of ${\\nabla \Sigma_H}$ (CC)")
     
     plt.subplot(1,3,2)
     plt.pcolormesh(x,y,gradSigHprojmat)
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
-    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction (matrix)")
+    plt.title("Projection of ${\\nabla \Sigma_H}$ (matrix)")
 
     plt.subplot(1,3,3)
     plt.pcolormesh(x,y,gradSigHprojFD)
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
-    plt.title("Projection of ${\\nabla \Sigma_H}$ into ExB direction (FD)")    
+    plt.title("Projection of ${\\nabla \Sigma_H}$ (FD)")    
     plt.show(block=False)
     
 if flagdebug:
