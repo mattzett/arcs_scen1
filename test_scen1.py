@@ -30,7 +30,11 @@ Re=6370e3
 filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")
-Ex=np.squeeze(E[0,:,:,0]); Ey=np.squeeze(E[0,:,:,1]);
+#Ex=np.squeeze(E[0,:,:,0]); Ey=np.squeeze(E[0,:,:,1]);
+Ex=np.squeeze(E[0,:,:,2]); Ey=-1*np.squeeze(E[0,:,:,1]);
+# prior line requires a bit of explanation...  The E arrays are output from Poynting_calc.m and those are
+#  in Er,Etheta,Ephi components instead of z,x,y; so we flip the 1,2 indices and then pick up a minus since because
+#  y is pos. north instead of theta which is pos. south...
 Jpar=np.asarray(data["Jpar"],dtype="float64")
 Spar=np.transpose(np.asarray(data["Spar"],dtype="float64"))
 mlon=np.asarray(data["mlon"],dtype="float64")
@@ -38,7 +42,7 @@ mlon=mlon.squeeze()
 mlat=np.asarray(data["mlat"],dtype="float64")
 mlat=mlat.squeeze()
 SigmaP_ref=np.transpose(np.asarray(data["SIGP"],dtype="float64"))
-SigmaH_ref=np.transpose(np.asarray(data["SIGH"],dtype="float64"))
+SigmaH_ref=np.abs(np.transpose(np.asarray(data["SIGH"],dtype="float64")))    # default to positive Hall conductance
 mlonp=np.asarray(data["mlonp"],dtype="float64")
 mlonp=mlonp.squeeze()
 mlatp=np.asarray(data["mlatp"],dtype="float64")
@@ -64,11 +68,10 @@ x=Re*np.sin(meantheta)*(phi-meanphi)
 lx=x.size; ly=y.size;
 
 
-# compute unit vectors for E,Exb basis, if needed?  Assume b is in the minus z-direction
-#Erotx=-Ey
-#Eroty=Ex
+# compute Exbhat;  Assume bhat is in the minus z-direction
 Erotx=-Ey
 Eroty=Ex
+
 
 # Now try to estimate the Hall conductance using current continuity...  We could
 #  formulate this as an estimation problem which the two conductances were estimated
@@ -86,7 +89,7 @@ for ix in range(0,lx):
         IdivE[k,k]=divE[ix,iy]
 magE=np.sqrt(magE2)
 UL=IdivE + LxEx + LyEy
-UL=-UL
+UL=-UL    # sign convention, z is up
 
 LL=I.tocsr()
 for ix in range(0,lx):
@@ -96,7 +99,7 @@ for ix in range(0,lx):
 
 [LxH,LyH]=FDmat2D(x,y,Erotx,Eroty)
 UR=-LxH-LyH
-UR=-UR
+UR=-UR   # sign convenction, z is up
 
 LR=I*0     # my lazy way of generate a null matrix of the correct size
 
@@ -165,7 +168,7 @@ gradSigPymat=np.reshape(gradSigPyvec,[lx,ly],order="F")
 AUL=UL
 IUL=scipy.sparse.eye(lx*ly,lx*ly)
 AULprime=(AUL.transpose()@AUL+1e-18*IUL)
-bUL=jvec     # seems to be a sign convention issue here???
+bUL=jvec
 bULprime=AUL.transpose()@bUL
 #xUL=scipy.sparse.linalg.spsolve(AUL,bUL)
 xUL=scipy.sparse.linalg.spsolve(AULprime,bULprime)
@@ -182,16 +185,22 @@ sigPULLL=np.reshape(xULLL,[lx,ly],order="F")
 
 # now try to recover the current density from matrix-computed conductivity gradients as a check
 #  note that we neglect hall currents for now since they are small
-jvectest=UL@SigPvec     #possibly a sign convention issue here???
+jvectest=UL@SigPvec
 jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 
 
-# compute the project of the Hall conductance gradient using matrix operators
+# compute the projection of the Hall conductance gradient using matrix operators
 interpolant=scipy.interpolate.interp2d(xp,yp,SigmaH_ref)
 SigmaH_refi=interpolant(x,y)
 SigHvec=SigmaH_refi.flatten(order="F")
 gradSigHprojvec=(LxH+LyH)@SigHvec
 gradSigHprojmat=np.reshape(gradSigHprojvec,[lx,ly],order="F")
+
+
+# recover current density from operator with the Hall terms
+SigHvec=SigmaH_refi.flatten(order="F")
+jvectest2=UL@SigPvec+UR@SigHvec
+jvectest2mat=np.reshape(jvectest2,[lx,ly],order="F")
 
 
 # Alternatively we can algebraicaly compute the gradient of Hall conductance given
@@ -203,12 +212,37 @@ gradSigHprojmat=np.reshape(gradSigHprojvec,[lx,ly],order="F")
 #divE=div2D(Ex,Ey,x,y)
 #gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
 #gradSigHproj=SigmaP*divE+gradSigPx*Ex+gradSigPy*Ey-Jpar    # Hall term from current continuity
-gradSigHproj=gradSigPx*Ex+gradSigPy*Ey-Jpar    # Hall term from current continuity
+gradSigHproj=Jpar+gradSigPx*Ex+gradSigPy*Ey+SigmaP*divE     # Hall term from current continuity
+
+
+# Hall term computed from finite differences.
 [gradSigHx,gradSigHy]=np.gradient(SigmaH_refi,x,y)
 gradSigHprojFD=Erotx*gradSigHx+Eroty*gradSigHy
 
 
 # check some of the calculations, gradients, divergences
+if flagdebug:
+    plt.subplots(1,3,dpi=100)
+
+    plt.subplot(1,3,1)
+    plt.pcolormesh(x,y,-divE*SigmaP_refi)
+    plt.colorbar()
+    plt.title("$-\Sigma_P ( \\nabla \cdot \mathbf{E} )$")
+    plt.clim(-1.5e-5,1.5e-5)
+    
+    plt.subplot(1,3,2)
+    plt.pcolormesh(x,y,-gradSigPx*Ex-gradSigPy*Ey)
+    plt.colorbar()
+    plt.title("$-\\nabla \Sigma_P \cdot \mathbf{E}$")
+    plt.clim(-1.5e-5,1.5e-5)
+
+    plt.subplot(1,3,3)
+    plt.pcolormesh(x,y,Erotx*gradSigHx+Eroty*gradSigHy)
+    plt.colorbar()
+    plt.title("$\\nabla \Sigma_H \cdot ( \mathbf{E} \\times \hat{b} )$")
+    plt.clim(-1.5e-5,1.5e-5)
+        
+
 if flagdebug:
     plt.subplots(1,3,dpi=100)
     
@@ -269,21 +303,28 @@ if flagdebug:
     plt.show(block=False)
 
 if flagdebug:
-    plt.subplots(1,2)
+    plt.subplots(1,3)
     
-    plt.subplot(1,2,1)
+    plt.subplot(1,3,1)
     plt.pcolormesh(x,y,jvectestmat)
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
-    plt.title("$J_\parallel$ computed from matrix operator")
+    plt.title("$J_\parallel$ (matrix sans Hall)")
     
-    plt.subplot(1,2,2)
+    plt.subplot(1,3,2)
     plt.pcolormesh(x,y,Jpar)
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
-    plt.title("$J_\parallel$ from model")    
+    plt.title("$J_\parallel$ from model")
+    
+    plt.subplot(1,3,3)
+    plt.pcolormesh(x,y,jvectest2mat)
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.colorbar()
+    plt.title("$J_\parallel$ (matrix with Hall)")    
     plt.show(block=False)
 
 if flagdebug:

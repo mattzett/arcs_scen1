@@ -58,7 +58,8 @@ def div2D(Ux,Uy,x,y):
 
 
 # construct a finite difference matrix for a single coordinate derivative over a 2D grid
-#  the matrix is returned in csr format so it can be indexed or used for sparse solutions
+#  the matrix is returned in csr format so it can be indexed or used for sparse solutions.
+#  The returned matrix assumes column-major ordering.
 def FDmat2D(x,y,scalex,scaley):
     dx=x[1]-x[0]
     dy=y[1]-y[0]
@@ -71,7 +72,7 @@ def FDmat2D(x,y,scalex,scaley):
     ient=0    
     for iy in range(0,ly):        
         for ix in range(0,lx):
-            k=iy*lx+ix      # this represents the equation for the kth unknown
+            k=iy*lx+ix      # this represents the equation for the kth unknown, column major
 
             if ix==0:
                 ir[ient]=k
