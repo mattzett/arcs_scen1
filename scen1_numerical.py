@@ -13,12 +13,17 @@ Perform some numerical operations needed for scenario 1 estimation
 import numpy as np
 import scipy.sparse
 
-# two dimensional divergence
+# two dimensional divergence assuming i,j -> x,y
 def div2D(Ux,Uy,x,y):
-    [dUxdx,_]=np.gradient(Ux,x,y)
-    [_,dUydy]=np.gradient(Uy,x,y)
-    return dUxdx+dUydy
+    [dUxdx,_]=np.gradient(Ux.transpose(),x,y)
+    [_,dUydy]=np.gradient(Uy.transpose(),x,y)
+    return dUxdx.transpose()+dUydy.transpose()
 
+# two dimensional gradient assuming i,j -> x,y
+def grad2D(U,x,y):
+    [dUdx,dUdy]=np.gradient(U.transpose(),x,y)
+    return [dUdx.transpose(),dUdy.transpose()]
+    
 
 # # construct a finite difference matrix for a single coordinate derivative over a 1D grid
 # def FDmat1D(x):

@@ -16,7 +16,7 @@ import scipy.io as spio
 import matplotlib.pyplot as plt
 import scipy.interpolate, scipy.sparse, scipy.sparse.linalg
 from plot_fns import plotSigmaP_debug
-from scen1_numerical import div2D,FDmat2D
+from scen1_numerical import div2D,grad2D,FDmat2D
 
 # setup
 plt.close("all")
@@ -29,14 +29,14 @@ Re=6370e3
 #  squeeze 1D arrays for plotting as well
 filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
-E=np.asarray(data["E"],dtype="float64")
-#Ex=np.squeeze(E[0,:,:,0]); Ey=np.squeeze(E[0,:,:,1]);
+E=np.asarray(data["E"],dtype="float64")      # do not use directly in calculations due to r,theta,phi basis.
 Ex=np.squeeze(E[0,:,:,2]); Ey=-1*np.squeeze(E[0,:,:,1]);
-# prior line requires a bit of explanation...  The E arrays are output from Poynting_calc.m and those are
+# prior line requires a bit of explanation.  The E arrays are output from Poynting_calc.m and those are
 #  in Er,Etheta,Ephi components instead of z,x,y; so we flip the 1,2 indices and then pick up a minus since because
-#  y is pos. north instead of theta which is pos. south...
-Jpar=np.asarray(data["Jpar"],dtype="float64")
-Spar=np.transpose(np.asarray(data["Spar"],dtype="float64"))
+#  y is pos. north instead of theta which is pos. south.  There is not need to reverse the indexing because the
+#  functional dependence of each comp. is already i,j,k -> z,x,y.
+Jpar=np.asarray(data["Jpar"],dtype="float64")                  # already indexed x,y
+Spar=np.transpose(np.asarray(data["Spar"],dtype="float64"))    # indexed x,y since computed from sigmas
 mlon=np.asarray(data["mlon"],dtype="float64")
 mlon=mlon.squeeze()
 mlat=np.asarray(data["mlat"],dtype="float64")
@@ -47,17 +47,16 @@ mlonp=np.asarray(data["mlonp"],dtype="float64")
 mlonp=mlonp.squeeze()
 mlatp=np.asarray(data["mlatp"],dtype="float64")
 mlatp=mlatp.squeeze()
-int_ohmic_ref=np.transpose(np.asarray(data["int_ohmic"])) # this computed via integration of 3D dissipation
+int_ohmic_ref=np.transpose(np.asarray(data["int_ohmic"]))       # this computed via integration of 3D dissipation; indexed x,y
 ohmic_ref=np.transpose(np.asarray(data["ohmici"]))
 
 
 # Try to convert Spar to conductance, using steady-state integrated Poynting thm.
-Eperp=E.squeeze()
-magE2=np.sum(Eperp**2,axis=2)
+magE2=Ex**2+Ey**2
 SigmaP=-Spar/magE2
 
 
-# map magnetic coordinates to Cartesian to facilitate differencing and "fitting"
+# map magnetic coordinates to local Cartesian to facilitate differencing and "fitting"
 theta=np.pi/2-np.deg2rad(mlat)
 meantheta=np.average(theta)
 phi=np.deg2rad(mlon)
@@ -68,7 +67,7 @@ x=Re*np.sin(meantheta)*(phi-meanphi)
 lx=x.size; ly=y.size;
 
 
-# compute Exbhat;  Assume bhat is in the minus z-direction
+# compute E x bhat;  Take bhat to be in the minus z-direction (northern hemis.)
 Erotx=-Ey
 Eroty=Ex
 
@@ -77,11 +76,11 @@ Eroty=Ex
 #  formulate this as an estimation problem which the two conductances were estimated
 #  subject to the approximate constraints dictated by the conservation laws.  
 #  1) try finite difference decomposition (non-parametric)
-#  2) basis expansion version if conditioning is poor
+#  2) basis expansion version if conditioning is poor (it seems to be)
 # Use python modules/functions for FDEs
 [LxEx,LyEy]=FDmat2D(x,y,Ex,Ey)
 I=scipy.sparse.eye(lx*ly,lx*ly)
-IdivE=I.tocsr()     # because we need to do elementwise mods later...
+IdivE=I.tocsr()     # because we need to do elementwise modifications
 divE=div2D(Ex,Ey,x,y)
 for ix in range(0,lx):
     for iy in range(0,ly):
@@ -101,7 +100,7 @@ for ix in range(0,lx):
 UR=-LxH-LyH
 UR=-UR   # sign convenction, z is up
 
-LR=I*0     # my lazy way of generate a null matrix of the correct size
+LR=I*0     # my lazy way of generate a null, sparse matrix of the correct size
 
 
 # determine a scaling for current density and Poynting flux problems (separately) 
@@ -208,7 +207,7 @@ jvectest2mat=np.reshape(jvectest2,[lx,ly],order="F")
 #  We do need to choose a location with very low Pedersen conductance for our reference
 #  Hall conductance location.  The issue is that this only gives the the projection along
 #  the ExB direction so this may not be a suitable option!!!
-[gradSigPx,gradSigPy]=np.gradient(SigmaP,x,y)
+[gradSigPx,gradSigPy]=grad2D(SigmaP,x,y)
 #divE=div2D(Ex,Ey,x,y)
 #gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
 #gradSigHproj=SigmaP*divE+gradSigPx*Ex+gradSigPy*Ey-Jpar    # Hall term from current continuity
@@ -216,32 +215,50 @@ gradSigHproj=Jpar+gradSigPx*Ex+gradSigPy*Ey+SigmaP*divE     # Hall term from cur
 
 
 # Hall term computed from finite differences.
-[gradSigHx,gradSigHy]=np.gradient(SigmaH_refi,x,y)
+[gradSigHx,gradSigHy]=grad2D(SigmaH_refi,x,y)
 gradSigHprojFD=Erotx*gradSigHx+Eroty*gradSigHy
 
 
 # check some of the calculations, gradients, divergences
 if flagdebug:
-    plt.subplots(1,3,dpi=100)
+    plt.subplots(2,3,dpi=100)
 
-    plt.subplot(1,3,1)
+    plt.subplot(2,3,1)
     plt.pcolormesh(x,y,-divE*SigmaP_refi)
     plt.colorbar()
     plt.title("$-\Sigma_P ( \\nabla \cdot \mathbf{E} )$")
     plt.clim(-1.5e-5,1.5e-5)
     
-    plt.subplot(1,3,2)
+    plt.subplot(2,3,2)
     plt.pcolormesh(x,y,-gradSigPx*Ex-gradSigPy*Ey)
     plt.colorbar()
     plt.title("$-\\nabla \Sigma_P \cdot \mathbf{E}$")
     plt.clim(-1.5e-5,1.5e-5)
 
-    plt.subplot(1,3,3)
+    plt.subplot(2,3,3)
     plt.pcolormesh(x,y,Erotx*gradSigHx+Eroty*gradSigHy)
     plt.colorbar()
     plt.title("$\\nabla \Sigma_H \cdot ( \mathbf{E} \\times \hat{b} )$")
     plt.clim(-1.5e-5,1.5e-5)
-        
+    
+    plt.subplot(2,3,4)
+    plt.pcolormesh(x,y,Erotx*gradSigHx+Eroty*gradSigHy \
+                   -gradSigPx*Ex-gradSigPy*Ey \
+                   -divE*SigmaP_refi )
+    plt.colorbar()
+    plt.title("Current density (all terms)")
+    plt.clim(-1.5e-5,1.5e-5)    
+    
+    plt.subplot(2,3,5)
+    plt.pcolormesh(x,y,Jpar)
+    plt.colorbar()
+    plt.title("Current density (model)")
+    plt.clim(-1.5e-5,1.5e-5)    
+    plt.show(block=False)
+
+
+breakpoint()
+
 
 if flagdebug:
     plt.subplots(1,3,dpi=100)
