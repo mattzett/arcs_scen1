@@ -16,7 +16,7 @@ import scipy.io as spio
 import matplotlib.pyplot as plt
 import scipy.interpolate, scipy.sparse, scipy.sparse.linalg
 #from plot_fns import plotSigmaP_debug
-from scen1_numerical import div2D,grad2D,FDmat2D
+from scen1_numerical import div2D,grad2D,FDmat2D,laplacepieces2D
 
 # setup
 plt.close("all")
@@ -27,32 +27,23 @@ Re=6370e3
 
 # Load synthetic data maps and organize data, permute/transpose arrays as lat,lon for plotting
 #  squeeze 1D arrays for plotting as well
-#  We presume all of the data are organized as z,x,y upon input
-filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
+#  We presume all of the data are organized as (z),x,y upon input
+filename="/Users/zettergm/PegasusR4i/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")      # do not use directly in calculations due to r,theta,phi basis.
-#Ex=np.squeeze(E[0,:,:,2]); Ey=-1*np.squeeze(E[0,:,:,1]);
 Ex=np.squeeze(E[0,:,:,1]); Ey=np.squeeze(E[0,:,:,2]);
-# prior line requires a bit of explanation.  The E arrays are output from Poynting_calc.m and those are
-#  in Er,Etheta,Ephi components instead of z,x,y; so we flip the 1,2 indices and then pick up a minus since because
-#  y is pos. north instead of theta which is pos. south.  There is no need to reverse the indexing because the
-#  functional dependence of each comp. is already i,j,k -> z,x,y.
 Jpar=np.asarray(data["Jpar"],dtype="float64")                  # already indexed x,y
 Spar=np.asarray(data["Spar"],dtype="float64")                  # indexed x,y
 mlon=np.asarray(data["mlon"],dtype="float64")
 mlon=mlon.squeeze()
 mlat=np.asarray(data["mlat"],dtype="float64")
 mlat=mlat.squeeze()
-#SigmaP_ref=np.transpose(np.asarray(data["SIGP"],dtype="float64"))
-#SigmaH_ref=np.abs(np.transpose(np.asarray(data["SIGH"],dtype="float64")))    # default to positive Hall conductance
 SigmaP_ref=np.asarray(data["SIGP"],dtype="float64")            # indexed as x,y already
 SigmaH_ref=np.abs(np.asarray(data["SIGH"],dtype="float64"))    # indexed as x,y already; convert to positive Hall conductance
 mlonp=np.asarray(data["mlonp"],dtype="float64")
 mlonp=mlonp.squeeze()
 mlatp=np.asarray(data["mlatp"],dtype="float64")
 mlatp=mlatp.squeeze()
-#int_ohmic_ref=np.transpose(np.asarray(data["int_ohmic"]))       # this computed via integration of 3D dissipation; indexed x,y
-#ohmic_ref=np.transpose(np.asarray(data["ohmici"]))
 int_ohmic_ref=np.asarray(data["int_ohmic"])       # this computed via integration of 3D dissipation; indexed x,y
 ohmic_ref=np.asarray(data["ohmici"])
 
@@ -122,12 +113,13 @@ jvec=Jpar.flatten(order="F")
 svec=Spar.flatten(order="F")
 b=np.concatenate((jvec/scaleJ,svec/scaleS),axis=0)    # make sure to use column-major ordering
 sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b,use_umfpack=True)    # what backend is this using? can we force umfpack?
-sigPnoreg=np.reshape(sigs[0:lx*ly],[lx,ly])
-sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly])
+sigPnoreg=np.reshape(sigs[0:lx*ly],[lx,ly],order="F")
+sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly],order="F")
 
 
-# regularization of the problem (Tikhonov)
-regparm=1e-28
+# regularization of the problem ("regular" Tikhonov)
+#regparm=1e-28
+regparm=1e-14
 regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
 # regkern=regkern.tocsr(copy=True)
 # for k in range(0,2*lx*ly):
@@ -138,8 +130,20 @@ regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
 bprime=A.transpose()@b
 Aprime=(A.transpose()@A + regparm*regkern)
 sigsreg=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
-sigPreg=np.reshape(sigsreg[0:lx*ly],[lx,ly])
-sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly])
+sigPreg=np.reshape(sigsreg[0:lx*ly],[lx,ly],order="F")
+sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly],order="F")
+
+
+# try a different solution with a curvature regularization
+regparm=1e-9
+scale=np.ones((lx,ly))
+[L2x,L2y]=laplacepieces2D(x,y,scale,scale)
+regkern=scipy.sparse.block_diag((L2x+L2y,L2x+L2y),format="csr")
+bprime=A.transpose()@b
+Aprime=(A.transpose()@A + regparm*regkern)
+sigsreg2=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
+sigPreg2=np.reshape(sigsreg2[0:lx*ly],[lx,ly],order="F")
+sigHreg2=np.reshape(sigsreg2[lx*ly:],[lx,ly],order="F")
 
 
 # test various subcomponents of inverse problem
@@ -173,10 +177,10 @@ gradSigPymat=np.reshape(gradSigPyvec,[lx,ly],order="F")
 # next try a system with no Hall current divergence (this is already nearly the case for our test example)
 AUL=UL
 IUL=scipy.sparse.eye(lx*ly,lx*ly)
-AULprime=(AUL.transpose()@AUL+1e-18*IUL)
+regparm2=1e-16
+AULprime=(AUL.transpose()@AUL+regparm2*IUL)
 bUL=jvec
 bULprime=AUL.transpose()@bUL
-#xUL=scipy.sparse.linalg.spsolve(AUL,bUL)
 xUL=scipy.sparse.linalg.spsolve(AULprime,bULprime)
 sigPUL=np.reshape(xUL,[lx,ly],order="F")
 
@@ -215,9 +219,6 @@ jvectest2mat=np.reshape(jvectest2,[lx,ly],order="F")
 #  Hall conductance location.  The issue is that this only gives the the projection along
 #  the ExB direction so this may not be a suitable option!!!
 [gradSigPx,gradSigPy]=grad2D(SigmaP,x,y)
-#divE=div2D(Ex,Ey,x,y)
-#gradSigHproj=Jpar-SigmaP*divE+gradSigPx*Eperp[:,:,0]+gradSigPy*Eperp[:,:,1]
-#gradSigHproj=SigmaP*divE+gradSigPx*Ex+gradSigPy*Ey-Jpar    # Hall term from current continuity
 gradSigHproj=Jpar+gradSigPx*Ex+gradSigPy*Ey+SigmaP*divE     # Hall term from current continuity
 
 
@@ -356,6 +357,7 @@ if flagdebug:
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("Projection of ${\\nabla \Sigma_H}$ (CC)")
+    plt.clim(-3e-6,3e-6)
     
     plt.subplot(1,3,2)
     plt.pcolormesh(x,y,gradSigHprojmat.transpose())
@@ -363,6 +365,7 @@ if flagdebug:
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("Projection of ${\\nabla \Sigma_H}$ (matrix)")
+    plt.clim(-3e-6,3e-6)
 
     plt.subplot(1,3,3)
     plt.pcolormesh(x,y,gradSigHprojFD.transpose())
@@ -371,6 +374,7 @@ if flagdebug:
     plt.colorbar()
     plt.title("Projection of ${\\nabla \Sigma_H}$ (FD)")    
     plt.show(block=False)
+    plt.clim(-3e-6,3e-6)
     
 if flagdebug:
     plt.subplots(1,2)
@@ -387,6 +391,24 @@ if flagdebug:
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.title("Full Operator Regularized $\Sigma_H$")    
+    plt.colorbar()
+    plt.show(block=False)
+
+if flagdebug:
+    plt.subplots(1,2)
+
+    plt.subplot(1,2,1)
+    plt.pcolormesh(x,y,sigPreg2.transpose())
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("Full Operator 2 Regularized $\Sigma_P$")
+    plt.colorbar()    
+    
+    plt.subplot(1,2,2)
+    plt.pcolormesh(x,y,sigHreg2.transpose())
+    plt.xlabel("x (km)")
+    plt.ylabel("y (km)")
+    plt.title("Full Operator 2 Regularized $\Sigma_H$")    
     plt.colorbar()
     plt.show(block=False)
     
