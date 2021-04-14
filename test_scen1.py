@@ -16,13 +16,12 @@ import scipy.io as spio
 import matplotlib.pyplot as plt
 import scipy.interpolate, scipy.sparse, scipy.sparse.linalg
 #from plot_fns import plotSigmaP_debug
-from scen1_numerical import div2D,grad2D,FDmat2D,laplacepieces2D
+from scen1_numerical import div2D,grad2D,FDmat2D,laplacepieces2D,mag2xy,linear_scen1
 
 # setup
 plt.close("all")
 flagSigP_debug=False
 flagdebug=True
-Re=6370e3
 
 
 # Load synthetic data maps and organize data, permute/transpose arrays as lat,lon for plotting
@@ -50,91 +49,39 @@ ohmic_ref=np.asarray(data["ohmici"])
 
 # Try to convert Spar to conductance, using steady-state integrated Poynting thm.
 magE2=Ex**2+Ey**2
+magE=np.sqrt(magE2)
 SigmaP=-Spar/magE2
 
-
 # map magnetic coordinates to local Cartesian to facilitate differencing and "fitting"
-theta=np.pi/2-np.deg2rad(mlat)
-meantheta=np.average(theta)
-phi=np.deg2rad(mlon)
-meanphi=np.average(phi)
-southdist=Re*(theta-meantheta)
-y=np.flip(southdist,axis=0)
-x=Re*np.sin(meantheta)*(phi-meanphi)
+[x,y]=mag2xy(mlon,mlat)
 lx=x.size; ly=y.size;
 
-
-# compute E x bhat;  Take bhat to be in the minus z-direction (northern hemis.)
+# compute E x bhat;  Take bhat to be in the minus z-direction (assumes northern hemis.)
 Erotx=-Ey
 Eroty=Ex
 
+# flatten data vectors
+jvec=Jpar.flatten(order="F")
+svec=Spar.flatten(order="F")
 
 # Now try to estimate the Hall conductance using current continuity...  We could
 #  formulate this as an estimation problem which the two conductances were estimated
 #  subject to the approximate constraints dictated by the conservation laws.  
 #  1) try finite difference decomposition (non-parametric)
 #  2) basis expansion version if conditioning is poor (it seems to be)
-# Use python modules/functions for FDEs
-[LxEx,LyEy]=FDmat2D(x,y,Ex,Ey)
-I=scipy.sparse.eye(lx*ly,lx*ly)
-IdivE=I.tocsr()     # because we need to do elementwise modifications
-divE=div2D(Ex,Ey,x,y)
-for ix in range(0,lx):
-    for iy in range(0,ly):
-        k=iy*lx+ix
-        IdivE[k,k]=divE[ix,iy]
-magE=np.sqrt(magE2)
-UL=IdivE + LxEx + LyEy
-UL=-UL    # sign convention, z is up
-
-LL=I.tocsr()
-for ix in range(0,lx):
-    for iy in range(0,ly):
-        k=iy*lx+ix
-        LL[k,k]=-magE2[ix,iy]
-
-[LxH,LyH]=FDmat2D(x,y,Erotx,Eroty)
-UR=-LxH-LyH
-UR=-UR   # sign convenction, z is up
-
-LR=I*0     # my lazy way of generate a null, sparse matrix of the correct size
-
-
-# determine a scaling for current density and Poynting flux problems (separately) 
-#  and apply to matrix elms.  The scaling does seem to be necessary to achieve a 
-#  decent inversion since the parameters/equations are heterogeneous (different units)
-#scaleS=np.max(abs(Spar))
-#scaleJ=np.max(abs(Jpar))
-scaleJ=1; scaleS=1;
-Uhstack=scipy.sparse.hstack([UL,UR])
-Lhstack=scipy.sparse.hstack([LL,LR])
-A=scipy.sparse.vstack([Uhstack/scaleJ,Lhstack/scaleS])
-jvec=Jpar.flatten(order="F")
-svec=Spar.flatten(order="F")
-b=np.concatenate((jvec/scaleJ,svec/scaleS),axis=0)    # make sure to use column-major ordering
-sigs=scipy.sparse.linalg.spsolve(A.tocsr(),b,use_umfpack=True)    # what backend is this using? can we force umfpack?
-sigPnoreg=np.reshape(sigs[0:lx*ly],[lx,ly],order="F")
-sigHnoreg=np.reshape(sigs[lx*ly:],[lx,ly],order="F")
-
+[A,b,UL,UR,LL,LR,LxH,LyH,divE]=linear_scen1(x,y,Ex,Ey,Erotx,Eroty,Jpar,Spar)
 
 # regularization of the problem ("regular" Tikhonov)
 #regparm=1e-28
 regparm=1e-14
 regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
-# regkern=regkern.tocsr(copy=True)
-# for k in range(0,2*lx*ly):
-#     if (k>=lx*ly):
-#         regkern[k,k]=1/10
-#     else:
-#         regkern[k,k]=1
 bprime=A.transpose()@b
 Aprime=(A.transpose()@A + regparm*regkern)
 sigsreg=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
 sigPreg=np.reshape(sigsreg[0:lx*ly],[lx,ly],order="F")
 sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly],order="F")
 
-
-# try a different solution with a curvature regularization
+# Tikhonov curvature regularization
 regparm=1e-14
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
@@ -145,7 +92,6 @@ sigsreg2=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
 sigPreg2=np.reshape(sigsreg2[0:lx*ly],[lx,ly],order="F")
 sigHreg2=np.reshape(sigsreg2[lx*ly:],[lx,ly],order="F")
 
-
 # test various subcomponents of inverse problem
 #  first a sanity check on the Poynting thm. (lower left block of full matrix)
 ALL=LL;
@@ -154,18 +100,17 @@ xLL=scipy.sparse.linalg.spsolve(ALL,bLL)
 sigPLL=np.reshape(xLL,[lx,ly])
 sigPLL=sigPLL.transpose()
 
-
 # try to use FD matrices to do a gradient to check that operators are being formed correctly
-thetap=np.pi/2-np.deg2rad(mlatp)
-meanthetap=np.average(thetap)
-phip=np.deg2rad(mlonp)
-meanphip=np.average(phip)
-southdistp=Re*(thetap-meanthetap)
-yp=np.flip(southdistp,axis=0)
-xp=Re*np.sin(meanthetap)*(phip-meanphip)
+#thetap=np.pi/2-np.deg2rad(mlatp)
+#meanthetap=np.average(thetap)
+#phip=np.deg2rad(mlonp)
+#meanphip=np.average(phip)
+#southdistp=Re*(thetap-meanthetap)
+#yp=np.flip(southdistp,axis=0)
+#xp=Re*np.sin(meanthetap)*(phip-meanphip)
+[xp,yp]=mag2xy(mlonp,mlatp)
 interpolant=scipy.interpolate.interp2d(xp,yp,SigmaP_ref.transpose())    # transpose to y,x
 SigmaP_refi=(interpolant(x,y)).transpose()                              # transpose back to x,y
-
 SigPvec=SigmaP_refi.flatten(order="F")
 [Lx,Ly]=FDmat2D(x,y,np.ones(Ex.shape),np.ones(Ey.shape))
 gradSigPxvec=Lx@SigPvec
