@@ -135,7 +135,7 @@ sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly],order="F")
 
 
 # try a different solution with a curvature regularization
-regparm=1e-9
+regparm=1e-14
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern=scipy.sparse.block_diag((L2x+L2y,L2x+L2y),format="csr")
@@ -271,16 +271,19 @@ if flagdebug:
     plt.pcolormesh(mlon,mlat,SigmaP.transpose())
     plt.title("Estimated Pedersen")
     plt.colorbar()
+    plt.clim(0,38)      
     
     plt.subplot(1,3,2)
     plt.pcolormesh(mlonp,mlatp,SigmaP_ref.transpose())
     plt.title("Reference Pedersen")
     plt.colorbar()
-    
+    plt.clim(0,38)    
+
     plt.subplot(1,3,3)
     plt.pcolormesh(mlonp,mlatp,SigmaH_ref.transpose())
     plt.title("Reference Hall")
     plt.colorbar()
+    plt.clim(0,60)    
     plt.show(block=False)
     
 if flagdebug:
@@ -383,14 +386,14 @@ if flagdebug:
     plt.pcolormesh(x,y,sigPreg.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
-    plt.title("Full Operator Regularized $\Sigma_P$")
+    plt.title("Full Operator, norm regularized:  $\Sigma_P$")
     plt.colorbar()    
     
     plt.subplot(1,2,2)
     plt.pcolormesh(x,y,sigHreg.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
-    plt.title("Full Operator Regularized $\Sigma_H$")    
+    plt.title("Full Operator, norm egularized:  $\Sigma_H$")    
     plt.colorbar()
     plt.show(block=False)
 
@@ -401,15 +404,17 @@ if flagdebug:
     plt.pcolormesh(x,y,sigPreg2.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
-    plt.title("Full Operator 2 Regularized $\Sigma_P$")
-    plt.colorbar()    
+    plt.title("Full Operator, curvature regularized:  $\Sigma_P$")
+    plt.colorbar()
+    plt.clim(0,38)    
     
     plt.subplot(1,2,2)
     plt.pcolormesh(x,y,sigHreg2.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
-    plt.title("Full Operator 2 Regularized $\Sigma_H$")    
+    plt.title("Full Operator, curvature regularized $\Sigma_H$")    
     plt.colorbar()
+    plt.clim(0,60)
     plt.show(block=False)
     
 if flagdebug:
