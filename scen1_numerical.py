@@ -13,17 +13,27 @@ Perform some numerical operations needed for scenario 1 estimation
 import numpy as np
 import scipy.sparse
 
-# two dimensional divergence assuming i,j -> x,y
+# two dimensional divergence assuming i,j -> x,y.  This mean that the input must be
+#  transposes prior to being used in numpy.gradient - this is not at all clear from the
+#  documentation...
+#def div2D(Ux,Uy,x,y):
+#    [dUxdx,_]=np.gradient(Ux.transpose(),x,y)
+#    [_,dUydy]=np.gradient(Uy.transpose(),x,y)
+#    return dUxdx.transpose()+dUydy.transpose()
+
 def div2D(Ux,Uy,x,y):
-    [dUxdx,_]=np.gradient(Ux.transpose(),x,y)
-    [_,dUydy]=np.gradient(Uy.transpose(),x,y)
-    return dUxdx.transpose()+dUydy.transpose()
+    [dUxdx,_]=np.gradient(Ux,x,y)
+    [_,dUydy]=np.gradient(Uy,x,y)
+    return dUxdx+dUydy
 
 # two dimensional gradient assuming i,j -> x,y
+#def grad2D(U,x,y):
+#    [dUdx,dUdy]=np.gradient(U.transpose(),x,y)
+#    return [dUdx.transpose(),dUdy.transpose()]
+
 def grad2D(U,x,y):
-    [dUdx,dUdy]=np.gradient(U.transpose(),x,y)
-    return [dUdx.transpose(),dUdy.transpose()]
-    
+    [dUdx,dUdy]=np.gradient(U,x,y)
+    return [dUdx,dUdy]
 
 # # construct a finite difference matrix for a single coordinate derivative over a 1D grid
 # def FDmat1D(x):
@@ -69,7 +79,7 @@ def FDmat2D(x,y,scalex,scaley):
     dx=x[1]-x[0]
     dy=y[1]-y[0]
     lx=x.size; ly=y.size
-    lent=2*lx*ly
+    lent=2*lx*ly     # two finite difference entries for each grid point
     
     ir=np.zeros(lent)
     ic=np.zeros(lent)

@@ -15,7 +15,7 @@ import numpy as np
 import scipy.io as spio
 import matplotlib.pyplot as plt
 import scipy.interpolate, scipy.sparse, scipy.sparse.linalg
-from plot_fns import plotSigmaP_debug
+#from plot_fns import plotSigmaP_debug
 from scen1_numerical import div2D,grad2D,FDmat2D
 
 # setup
@@ -27,28 +27,34 @@ Re=6370e3
 
 # Load synthetic data maps and organize data, permute/transpose arrays as lat,lon for plotting
 #  squeeze 1D arrays for plotting as well
+#  We presume all of the data are organized as z,x,y upon input
 filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")      # do not use directly in calculations due to r,theta,phi basis.
-Ex=np.squeeze(E[0,:,:,2]); Ey=-1*np.squeeze(E[0,:,:,1]);
+#Ex=np.squeeze(E[0,:,:,2]); Ey=-1*np.squeeze(E[0,:,:,1]);
+Ex=np.squeeze(E[0,:,:,1]); Ey=np.squeeze(E[0,:,:,2]);
 # prior line requires a bit of explanation.  The E arrays are output from Poynting_calc.m and those are
 #  in Er,Etheta,Ephi components instead of z,x,y; so we flip the 1,2 indices and then pick up a minus since because
-#  y is pos. north instead of theta which is pos. south.  There is not need to reverse the indexing because the
+#  y is pos. north instead of theta which is pos. south.  There is no need to reverse the indexing because the
 #  functional dependence of each comp. is already i,j,k -> z,x,y.
 Jpar=np.asarray(data["Jpar"],dtype="float64")                  # already indexed x,y
-Spar=np.transpose(np.asarray(data["Spar"],dtype="float64"))    # indexed x,y since computed from sigmas
+Spar=np.asarray(data["Spar"],dtype="float64")                  # indexed x,y
 mlon=np.asarray(data["mlon"],dtype="float64")
 mlon=mlon.squeeze()
 mlat=np.asarray(data["mlat"],dtype="float64")
 mlat=mlat.squeeze()
-SigmaP_ref=np.transpose(np.asarray(data["SIGP"],dtype="float64"))
-SigmaH_ref=np.abs(np.transpose(np.asarray(data["SIGH"],dtype="float64")))    # default to positive Hall conductance
+#SigmaP_ref=np.transpose(np.asarray(data["SIGP"],dtype="float64"))
+#SigmaH_ref=np.abs(np.transpose(np.asarray(data["SIGH"],dtype="float64")))    # default to positive Hall conductance
+SigmaP_ref=np.asarray(data["SIGP"],dtype="float64")            # indexed as x,y already
+SigmaH_ref=np.abs(np.asarray(data["SIGH"],dtype="float64"))    # indexed as x,y already; convert to positive Hall conductance
 mlonp=np.asarray(data["mlonp"],dtype="float64")
 mlonp=mlonp.squeeze()
 mlatp=np.asarray(data["mlatp"],dtype="float64")
 mlatp=mlatp.squeeze()
-int_ohmic_ref=np.transpose(np.asarray(data["int_ohmic"]))       # this computed via integration of 3D dissipation; indexed x,y
-ohmic_ref=np.transpose(np.asarray(data["ohmici"]))
+#int_ohmic_ref=np.transpose(np.asarray(data["int_ohmic"]))       # this computed via integration of 3D dissipation; indexed x,y
+#ohmic_ref=np.transpose(np.asarray(data["ohmici"]))
+int_ohmic_ref=np.asarray(data["int_ohmic"])       # this computed via integration of 3D dissipation; indexed x,y
+ohmic_ref=np.asarray(data["ohmici"])
 
 
 # Try to convert Spar to conductance, using steady-state integrated Poynting thm.
@@ -153,8 +159,9 @@ meanphip=np.average(phip)
 southdistp=Re*(thetap-meanthetap)
 yp=np.flip(southdistp,axis=0)
 xp=Re*np.sin(meanthetap)*(phip-meanphip)
-interpolant=scipy.interpolate.interp2d(xp,yp,SigmaP_ref)
-SigmaP_refi=interpolant(x,y)
+interpolant=scipy.interpolate.interp2d(xp,yp,SigmaP_ref.transpose())    # transpose to y,x
+SigmaP_refi=(interpolant(x,y)).transpose()                              # transpose back to x,y
+
 SigPvec=SigmaP_refi.flatten(order="F")
 [Lx,Ly]=FDmat2D(x,y,np.ones(Ex.shape),np.ones(Ey.shape))
 gradSigPxvec=Lx@SigPvec
@@ -189,8 +196,8 @@ jvectestmat=np.reshape(jvectest,[lx,ly],order="F")
 
 
 # compute the projection of the Hall conductance gradient using matrix operators
-interpolant=scipy.interpolate.interp2d(xp,yp,SigmaH_ref)
-SigmaH_refi=interpolant(x,y)
+interpolant=scipy.interpolate.interp2d(xp,yp,SigmaH_ref.transpose())
+SigmaH_refi=(interpolant(x,y)).transpose()
 SigHvec=SigmaH_refi.flatten(order="F")
 gradSigHprojvec=(LxH+LyH)@SigHvec
 gradSigHprojmat=np.reshape(gradSigHprojvec,[lx,ly],order="F")
@@ -224,57 +231,53 @@ if flagdebug:
     plt.subplots(2,3,dpi=100)
 
     plt.subplot(2,3,1)
-    plt.pcolormesh(x,y,-divE*SigmaP_refi)
+    plt.pcolormesh(x,y,-(divE*SigmaP_refi).transpose())
     plt.colorbar()
     plt.title("$-\Sigma_P ( \\nabla \cdot \mathbf{E} )$")
     plt.clim(-1.5e-5,1.5e-5)
     
     plt.subplot(2,3,2)
-    plt.pcolormesh(x,y,-gradSigPx*Ex-gradSigPy*Ey)
+    plt.pcolormesh(x,y,(-gradSigPx*Ex-gradSigPy*Ey).transpose())
     plt.colorbar()
     plt.title("$-\\nabla \Sigma_P \cdot \mathbf{E}$")
     plt.clim(-1.5e-5,1.5e-5)
 
     plt.subplot(2,3,3)
-    plt.pcolormesh(x,y,Erotx*gradSigHx+Eroty*gradSigHy)
+    plt.pcolormesh(x,y,(Erotx*gradSigHx+Eroty*gradSigHy).transpose())
     plt.colorbar()
     plt.title("$\\nabla \Sigma_H \cdot ( \mathbf{E} \\times \hat{b} )$")
     plt.clim(-1.5e-5,1.5e-5)
     
     plt.subplot(2,3,4)
-    plt.pcolormesh(x,y,Erotx*gradSigHx+Eroty*gradSigHy \
+    plt.pcolormesh(x,y,(Erotx*gradSigHx+Eroty*gradSigHy \
                    -gradSigPx*Ex-gradSigPy*Ey \
-                   -divE*SigmaP_refi )
+                   -divE*SigmaP_refi).transpose() )
     plt.colorbar()
     plt.title("Current density (all terms)")
     plt.clim(-1.5e-5,1.5e-5)    
     
     plt.subplot(2,3,5)
-    plt.pcolormesh(x,y,Jpar)
+    plt.pcolormesh(x,y,Jpar.transpose())
     plt.colorbar()
     plt.title("Current density (model)")
     plt.clim(-1.5e-5,1.5e-5)    
     plt.show(block=False)
 
-
-breakpoint()
-
-
 if flagdebug:
     plt.subplots(1,3,dpi=100)
     
     plt.subplot(1,3,1)
-    plt.pcolormesh(mlon,mlat,SigmaP)
+    plt.pcolormesh(mlon,mlat,SigmaP.transpose())
     plt.title("Estimated Pedersen")
     plt.colorbar()
     
     plt.subplot(1,3,2)
-    plt.pcolormesh(mlonp,mlatp,SigmaP_ref)
+    plt.pcolormesh(mlonp,mlatp,SigmaP_ref.transpose())
     plt.title("Reference Pedersen")
     plt.colorbar()
     
     plt.subplot(1,3,3)
-    plt.pcolormesh(mlonp,mlatp,SigmaH_ref)
+    plt.pcolormesh(mlonp,mlatp,SigmaH_ref.transpose())
     plt.title("Reference Hall")
     plt.colorbar()
     plt.show(block=False)
@@ -283,20 +286,20 @@ if flagdebug:
     plt.subplots(1,3)
     
     plt.subplot(1,3,1)
-    plt.pcolormesh(x,y,gradSigPx)
+    plt.pcolormesh(x,y,gradSigPx.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("Numerical $\\nabla \Sigma_P \cdot \mathbf{e}_x$")
     
     plt.subplot(1,3,2)
-    plt.pcolormesh(x,y,gradSigPy)
+    plt.pcolormesh(x,y,gradSigPy.transpose())
     plt.xlabel("x (km)")
     plt.colorbar()
     plt.title("Numerical $\\nabla \Sigma_P \cdot \mathbf{e}_y$")
    
     plt.subplot(1,3,3)
-    plt.pcolormesh(x,y,divE)
+    plt.pcolormesh(x,y,divE.transpose())
     plt.xlabel("x (km)")
     plt.colorbar()
     plt.title("Numerical $\\nabla \cdot \mathbf{E}$")
@@ -306,14 +309,14 @@ if flagdebug:
     plt.subplots(1,2,dpi=100)
     
     plt.subplot(1,2,1)
-    plt.pcolormesh(x,y,gradSigPxmat)
+    plt.pcolormesh(x,y,gradSigPxmat.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("Matrix $\\nabla \Sigma_P \cdot \mathbf{e}_x$")
     
     plt.subplot(1,2,2)
-    plt.pcolormesh(x,y,gradSigPymat)
+    plt.pcolormesh(x,y,gradSigPymat.transpose())
     plt.xlabel("x (km)")
     plt.colorbar()
     plt.title("Matrix $\\nabla \Sigma_P \cdot \mathbf{e}_y$")
@@ -323,21 +326,21 @@ if flagdebug:
     plt.subplots(1,3)
     
     plt.subplot(1,3,1)
-    plt.pcolormesh(x,y,jvectestmat)
+    plt.pcolormesh(x,y,jvectestmat.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("$J_\parallel$ (matrix sans Hall)")
     
     plt.subplot(1,3,2)
-    plt.pcolormesh(x,y,Jpar)
+    plt.pcolormesh(x,y,Jpar.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("$J_\parallel$ from model")
     
     plt.subplot(1,3,3)
-    plt.pcolormesh(x,y,jvectest2mat)
+    plt.pcolormesh(x,y,jvectest2mat.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
@@ -348,21 +351,21 @@ if flagdebug:
     plt.subplots(1,3)
     
     plt.subplot(1,3,1)
-    plt.pcolormesh(x,y,gradSigHproj)
+    plt.pcolormesh(x,y,gradSigHproj.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("Projection of ${\\nabla \Sigma_H}$ (CC)")
     
     plt.subplot(1,3,2)
-    plt.pcolormesh(x,y,gradSigHprojmat)
+    plt.pcolormesh(x,y,gradSigHprojmat.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
     plt.title("Projection of ${\\nabla \Sigma_H}$ (matrix)")
 
     plt.subplot(1,3,3)
-    plt.pcolormesh(x,y,gradSigHprojFD)
+    plt.pcolormesh(x,y,gradSigHprojFD.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.colorbar()
@@ -391,14 +394,14 @@ if flagdebug:
     plt.subplots(1,2)
     
     plt.subplot(1,2,1)
-    plt.pcolormesh(x,y,sigPLL)
+    plt.pcolormesh(x,y,sigPLL.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.title("$\Sigma_P$ via Poynting")
     plt.colorbar()    
     
     plt.subplot(1,2,2)
-    plt.pcolormesh(x,y,sigPUL)
+    plt.pcolormesh(x,y,sigPUL.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.title("$\Sigma_P$ via current continuity")    
@@ -407,7 +410,7 @@ if flagdebug:
 
 if flagdebug:
     plt.figure(dpi=100)
-    plt.pcolormesh(x,y,sigPULLL)
+    plt.pcolormesh(x,y,sigPULLL.transpose())
     plt.xlabel("x (km)")
     plt.ylabel("y (km)")
     plt.title("$\Sigma_P$ via current continuity and Poynting combined")    
@@ -421,7 +424,7 @@ if flagSigP_debug:
     [MLON,MLAT]=np.meshgrid(mlon,mlat)
     SigmaP_refi=scipy.interpolate.interpn((mlonp,mlatp),np.transpose(SigmaP_ref),(MLON,MLAT)) # needs to be permuted as lon,lat
     dissipation=SigmaP_refi*magE2
-    plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref, \
-                     SigmaP_ref,SigmaP_refi,magE2)
+#    plotSigmaP_debug(mlon,mlat,mlonp,mlatp,Spar,Eperp,dissipation,int_ohmic_ref, \
+#                     SigmaP_ref,SigmaP_refi,magE2)
 
 
