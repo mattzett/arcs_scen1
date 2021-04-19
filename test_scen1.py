@@ -27,7 +27,7 @@ flagdebug=True
 # Load synthetic data maps and organize data, permute/transpose arrays as lat,lon for plotting
 #  squeeze 1D arrays for plotting as well
 #  We presume all of the data are organized as (z),x,y upon input
-filename="/Users/zettergm/PegasusR4i/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
+filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")      # do not use directly in calculations due to r,theta,phi basis.
 Ex=np.squeeze(E[0,:,:,1]); Ey=np.squeeze(E[0,:,:,2]);
@@ -47,14 +47,22 @@ int_ohmic_ref=np.asarray(data["int_ohmic"])       # this computed via integratio
 ohmic_ref=np.asarray(data["ohmici"])
 
 
+# map magnetic coordinates to local Cartesian to facilitate differencing and "fitting"
+[x,y]=mag2xy(mlon,mlat)
+lx=x.size; ly=y.size;
+
+
+# add noise to "measurements"
+noisefrac=0
+Jpar=Jpar+noisefrac*max(Jpar.flatten())*np.random.randn(lx,ly)
+Spar=Spar+noisefrac*max(Spar.flatten())*np.random.randn(lx,ly)
+
+
 # Try to convert Spar to conductance, using steady-state integrated Poynting thm.
 magE2=Ex**2+Ey**2
 magE=np.sqrt(magE2)
 SigmaP=-Spar/magE2
 
-# map magnetic coordinates to local Cartesian to facilitate differencing and "fitting"
-[x,y]=mag2xy(mlon,mlat)
-lx=x.size; ly=y.size;
 
 # compute E x bhat;  Take bhat to be in the minus z-direction (assumes northern hemis.)
 Erotx=-Ey
@@ -72,8 +80,8 @@ svec=Spar.flatten(order="F")
 [A,b,UL,UR,LL,LR,LxH,LyH,divE]=linear_scen1(x,y,Ex,Ey,Erotx,Eroty,Jpar,Spar)
 
 # regularization of the problem ("regular" Tikhonov)
-#regparm=1e-28
 regparm=1e-14
+#regparm=1e-9
 regkern=scipy.sparse.eye(2*lx*ly,2*lx*ly)
 bprime=A.transpose()@b
 Aprime=(A.transpose()@A + regparm*regkern)
@@ -83,6 +91,7 @@ sigHreg=np.reshape(sigsreg[lx*ly:],[lx,ly],order="F")
 
 # Tikhonov curvature regularization
 regparm=1e-14
+#regparm=1e-9
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern=scipy.sparse.block_diag((L2x+L2y,L2x+L2y),format="csr")
