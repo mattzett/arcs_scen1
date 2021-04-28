@@ -76,27 +76,39 @@ svec=Spar.flatten(order="F")
 [A,b,UL,UR,LL,LR,LxH,LyH,divE]=linear_scen1(x,y,Ex,Ey,Erotx,Eroty,Jpar,Spar)
 
 # Tikhonov curvature regularization; this is our reference best case from the initial study
-regparm=1e-14
+regparm=1e-6
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern=scipy.sparse.block_diag((L2x+L2y,L2x+L2y),format="csr")
 bprime=A.transpose()@b
-Aprime=(A.transpose()@A + regparm*regkern)
+Aprime=(A.transpose()@A + regparm*regkern.transpose()@regkern)     # note there was an error here in the original code
 sigsreg2=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
 sigPreg2=np.reshape(sigsreg2[0:lx*ly],[lx,ly],order="F")
 sigHreg2=np.reshape(sigsreg2[lx*ly:],[lx,ly],order="F")
 
-# take the Pedersen conductivity as given and solve the Hall problem (with regularization)
-regparm=1e-14
+# take the Pedersen conductivity as given and solve the Hall problem (with curv. regularization)
+regparm=1e-9
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern=L2x+L2y
 A2=UR
 b2=jvec-UL@SigmaPvec
 b2prime=A2.transpose()@b2
-A2prime=(A2.transpose()@A2 + regparm*regkern)
+A2prime=(A2.transpose()@A2 + regparm*regkern.transpose()@regkern)
 sigHregsep=scipy.sparse.linalg.spsolve(A2prime,b2prime,use_umfpack=True)
 sigHregsep=np.reshape(sigHregsep,[lx,ly],order="F")
+
+# # take the Pedersen conductivity as given and solve the Hall problem (with curv. 
+# #  regularization and favor solutions similar to Pedersen conductance)
+# regparm=1e-14
+# scale=np.ones((lx,ly))
+# [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
+# regkern1=L2x+L2y                             # curvature
+# regkern2=I=scipy.sparse.eye(lx*ly,lx*ly)     # distance from Pedersen
+# A3=UR
+# A3prime=(A3.transpose()@A3 + regparm*regkern1 + regparm*regkern2)
+# b3=jvec-UL@SigmaPvec+regparm*regkern2*SigmaPvec
+# b3prime=A2.transpose()@b3
 
 # make plots
 plt.subplots(1,2,dpi=100)
