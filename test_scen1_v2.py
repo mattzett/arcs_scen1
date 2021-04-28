@@ -49,6 +49,13 @@ ohmic_ref=np.asarray(data["ohmici"])
 [x,y]=mag2xy(mlon,mlat)
 lx=x.size; ly=y.size;
 
+# interpolate reference data into observation grid
+[xp,yp]=mag2xy(mlonp,mlatp)
+interpolant=scipy.interpolate.interp2d(xp,yp,SigmaP_ref.transpose())    # transpose to y,x
+SigmaP_refi=(interpolant(x,y)).transpose()                              # transpose back to x,y
+interpolant=scipy.interpolate.interp2d(xp,yp,SigmaH_ref.transpose())
+SigmaH_refi=(interpolant(x,y)).transpose()
+
 # add noise to "measurements"
 noisefrac=0
 Jpar=Jpar+noisefrac*max(Jpar.flatten())*np.random.randn(lx,ly)
@@ -68,11 +75,7 @@ Eroty=Ex
 jvec=Jpar.flatten(order="F")
 svec=Spar.flatten(order="F")
 
-# Now try to estimate the Hall conductance using current continuity...  We could
-#  formulate this as an estimation problem which the two conductances were estimated
-#  subject to the approximate constraints dictated by the conservation laws.  
-#  1) try finite difference decomposition (non-parametric)
-#  2) basis expansion version if conditioning is poor (it seems to be)
+# Now try to estimate the Hall conductance using current continuity.
 [A,b,UL,UR,LL,LR,LxH,LyH,divE]=linear_scen1(x,y,Ex,Ey,Erotx,Eroty,Jpar,Spar)
 
 # Tikhonov curvature regularization; this is our reference best case from the initial study
@@ -113,9 +116,42 @@ b3prime=A3.transpose()@b3 + regparm2*( regkern2.transpose()@regkern2 )@SigmaPvec
 sigHregsep2=scipy.sparse.linalg.spsolve(A3prime,b3prime,use_umfpack=True)
 sigHregsep2=np.reshape(sigHregsep2,[lx,ly],order="F")
 
-# make plots
-plt.subplots(1,3,dpi=100)
+# make plots of ground-truth data
+plt.subplots(2,2,dpi=100)
+plt.subplot(2,2,1)
+plt.pcolormesh(x,y,SigmaP_refi.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("$\Sigma_P$ ground truth")    
+plt.colorbar()
+plt.clim(0,60)
 
+plt.subplot(2,2,2)
+plt.pcolormesh(x,y,SigmaH_refi.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("$\Sigma_H$ ground truth")    
+plt.colorbar()
+plt.clim(0,60)
+
+plt.subplot(2,2,3)
+plt.pcolormesh(x,y,Jpar.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("$J_\parallel$ with noise")
+plt.colorbar()
+
+plt.subplot(2,2,4)
+plt.pcolormesh(x,y,Spar.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("$S_\parallel$ with noise")
+plt.colorbar()
+plt.show(block=False)
+
+
+# make plots of reconstructions of Hall conductance
+plt.subplots(1,3,dpi=100)
 plt.subplot(1,3,1)
 plt.pcolormesh(x,y,sigHregsep.transpose())
 plt.xlabel("x (km)")
@@ -139,5 +175,15 @@ plt.ylabel("y (km)")
 plt.title("sequential curvature + norm regularized $\Sigma_H$")    
 plt.colorbar()
 plt.clim(0,60)
-
 plt.show(block=False)
+
+# Look at some derived quantities
+plt.figure(dpi=100)
+plt.pcolormesh(x,y,sigHregsep2.transpose()/SigmaP.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("$\Sigma_H$/$\Sigma_P$")    
+plt.colorbar()
+plt.show(block=False)
+plt.clim(0.5,1.5)
+
