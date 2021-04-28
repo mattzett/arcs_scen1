@@ -98,21 +98,25 @@ A2prime=(A2.transpose()@A2 + regparm*regkern.transpose()@regkern)
 sigHregsep=scipy.sparse.linalg.spsolve(A2prime,b2prime,use_umfpack=True)
 sigHregsep=np.reshape(sigHregsep,[lx,ly],order="F")
 
-# # take the Pedersen conductivity as given and solve the Hall problem (with curv. 
-# #  regularization and favor solutions similar to Pedersen conductance)
-# regparm=1e-14
-# scale=np.ones((lx,ly))
-# [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
-# regkern1=L2x+L2y                             # curvature
-# regkern2=I=scipy.sparse.eye(lx*ly,lx*ly)     # distance from Pedersen
-# A3=UR
-# A3prime=(A3.transpose()@A3 + regparm*regkern1 + regparm*regkern2)
-# b3=jvec-UL@SigmaPvec+regparm*regkern2*SigmaPvec
-# b3prime=A2.transpose()@b3
+# take the Pedersen conductivity as given and solve the Hall problem (with curv. 
+#  regularization and favor solutions similar to Pedersen conductance)
+regparm1=1e-9
+regparm2=1e-14
+scale=np.ones((lx,ly))
+[L2x,L2y]=laplacepieces2D(x,y,scale,scale)
+regkern1=L2x+L2y                             # curvature
+regkern2=scipy.sparse.eye(lx*ly,lx*ly)     # distance from Pedersen
+A3=UR
+A3prime=( A3.transpose()@A3 + regparm1*regkern1.transpose()@regkern1 + regparm2*regkern2.transpose()@regkern2 )
+b3=jvec-UL@SigmaPvec
+b3prime=A3.transpose()@b3 + regparm2*( regkern2.transpose()@regkern2 )@SigmaPvec
+sigHregsep2=scipy.sparse.linalg.spsolve(A3prime,b3prime,use_umfpack=True)
+sigHregsep2=np.reshape(sigHregsep2,[lx,ly],order="F")
 
 # make plots
-plt.subplots(1,2,dpi=100)
-plt.subplot(1,2,1)
+plt.subplots(1,3,dpi=100)
+
+plt.subplot(1,3,1)
 plt.pcolormesh(x,y,sigHregsep.transpose())
 plt.xlabel("x (km)")
 plt.ylabel("y (km)")
@@ -120,11 +124,20 @@ plt.title("Sequential estimation, curvature regularized $\Sigma_H$")
 plt.colorbar()
 plt.clim(0,60)
 
-plt.subplot(1,2,2)
+plt.subplot(1,3,2)
 plt.pcolormesh(x,y,sigHreg2.transpose())
 plt.xlabel("x (km)")
 plt.ylabel("y (km)")
 plt.title("Full Operator, curvature regularized $\Sigma_H$")    
 plt.colorbar()
 plt.clim(0,60)
+
+plt.subplot(1,3,3)
+plt.pcolormesh(x,y,sigHregsep2.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("sequential curvature + norm regularized $\Sigma_H$")    
+plt.colorbar()
+plt.clim(0,60)
+
 plt.show(block=False)
