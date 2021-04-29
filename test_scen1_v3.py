@@ -96,13 +96,16 @@ A=UR+linterm
 
 # Regularize
 regparm1=1e-9
-regparm2=5e-15
+#regparm2=5e-15
+regparm2=1e-13
+#refrat=1
+refrat=1.5
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern1=L2x+L2y                             # curvature
 regkern2=scipy.sparse.eye(lx*ly,lx*ly)     # distance from Pedersen
 Aprime=( A.transpose()@A + regparm1*regkern1.transpose()@regkern1 + regparm2*regkern2.transpose()@regkern2)
-bprime=A.transpose()@b + regparm2*( regkern2.transpose()@regkern2 )@np.ones((lx*ly))
+bprime=A.transpose()@b + regparm2*( regkern2.transpose()@regkern2 )@np.ones((lx*ly))*refrat
 
 # solve
 sigHrat=scipy.sparse.linalg.spsolve(Aprime,bprime,use_umfpack=True)
@@ -110,8 +113,8 @@ sigHrat=np.reshape(sigHrat,[lx,ly],order="F")
 SigmaH=SigmaP*sigHrat
 
 # plots
-plt.subplots(2,2,dpi=100)
-plt.subplot(2,2,1)
+plt.subplots(2,3)
+plt.subplot(2,3,1)
 plt.pcolormesh(x,y,SigmaP_refi.transpose())
 plt.xlabel("x (km)")
 plt.ylabel("y (km)")
@@ -119,7 +122,7 @@ plt.title("$\Sigma_P$ ground truth")
 plt.colorbar()
 plt.clim(0,60)
 
-plt.subplot(2,2,2)
+plt.subplot(2,3,2)
 plt.pcolormesh(x,y,SigmaH_refi.transpose())
 plt.xlabel("x (km)")
 plt.ylabel("y (km)")
@@ -127,7 +130,15 @@ plt.title("$\Sigma_H$ ground truth")
 plt.colorbar()
 plt.clim(0,60)
 
-plt.subplot(2,2,3)
+plt.subplot(2,3,3)
+plt.pcolormesh(x,y,SigmaH_refi.transpose()/SigmaP_refi.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("$\Sigma_H / \Sigma_P$ ground truth")    
+plt.colorbar()
+#plt.clim(0,2)
+
+plt.subplot(2,3,4)
 plt.pcolormesh(x,y,SigmaP.transpose())
 plt.xlabel("x (km)")
 plt.ylabel("y (km)")
@@ -135,13 +146,21 @@ plt.title("estimated $\Sigma_P$")
 plt.colorbar()
 plt.clim(0,60)
 
-plt.subplot(2,2,4)
+plt.subplot(2,3,5)
 plt.pcolormesh(x,y,SigmaH.transpose())
 plt.xlabel("x (km)")
 plt.ylabel("y (km)")
 plt.title("estimated $\Sigma_H$")
 plt.colorbar()
 plt.clim(0,60)
+
+plt.subplot(2,3,6)
+plt.pcolormesh(x,y,sigHrat.transpose())
+plt.xlabel("x (km)")
+plt.ylabel("y (km)")
+plt.title("estimated $\Sigma_H / \Sigma_P$")    
+plt.colorbar()
+#plt.clim(0,2)
 
 plt.show(block=False)
 

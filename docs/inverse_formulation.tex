@@ -130,7 +130,7 @@ Yielding our full set of constrains as:
 As discussed previously this system will not be full-rank, but serves as a starting point for a suitable generalized inverse for this problem.  As a final note the full system has size $2 \cdot N \cdot M \times 2 \cdot N \cdot M$; where $N,M$ are the $x,y$ size of the data maps provided by instrument teams.  
 
 
-\section{Maximum likelihood estimator}
+\section{Maximum likelihood estimators}
 
 The maximum likelihood estimator, assuming Gaussian-distributed noise is (note we drop the underline notation here for brevity):
 \begin{equation}
@@ -144,7 +144,9 @@ where $\lambda$ is a regularization parameter.  This approach regularizes the no
 \begin{equation}
 \hat{x} = \left( A^T A  + \lambda  \Gamma^T \Gamma \right)^{-1} A^T b
 \end{equation}
-where $\Gamma$ is an operator describing smoothness (e.g. Laplacian) or variation (gradient).  We find that the laplacian works well to keep the reconstructions as smooth as possible.  Finally we can add in an offset term, i.e. solve a problem of the form:
+where $\Gamma$ is an operator describing smoothness (e.g. Laplacian) or variation (gradient).  We find that the laplacian works well to keep the reconstructions as smooth as possible.  
+
+We can add in an offset term, i.e. solve a problem of the form:
 \begin{equation}
 \hat{x} = \min_x \left\{  || Ax -b ||^2 + || \Gamma x||^2 +  || x - x_0 ||^2 \right\}
 \end{equation}
@@ -154,7 +156,15 @@ Which solves the least squares problem subject to constraints on smoothness and 
 \end{equation}
 In the case of the problem of estimating the ionospheric conductances the Hall conductance could constrained to not vary too far from the Pedersen conductivity.  
 
-FIXME: Need to add error covariance calculations.  
+Lastly it may be advantageous to recast the current continuity in terms of the ratio of Hall to Pedersen conductance.  This retains the linearity of the problem only if the Pedersen conductance is known \emph{a priori}.  
+\begin{equation}
+\nabla \left(  \frac{\Sigma_H}{\Sigma_P}  \right) \cdot \mathbf{E} \times \hat{\mathbf{b}} +  \left(  \frac{\Sigma_H}{\Sigma_P}  \right) \frac{\nabla \Sigma_P}{\Sigma_P}  \cdot \mathbf{E} \times \hat{\mathbf{b}} = \frac{J_\parallel}{\Sigma_P} + \nabla_\perp \cdot \mathbf{E}_\perp + \frac{\nabla \Sigma_P}{\Sigma_P}  \cdot  \mathbf{E}_\perp
+\end{equation}
+This problem can be expressed in matrix form, similar to the approaches described above, and also solve via regularized inverses.  Doing so in a linear fashion does require one to first solve for the Pedersen conductance using the Poynting theorem.  Such a formulation has the benefit that you can regularize deviations from a set conductance ratio.   If a ratio of 1 is used this is equivalent to assuming an average energy of 2.5 keV for the precipitating particles.  
+
+
+
+\section{Error Covariance}
 
 
 \section{Connections to precipitating electrons}
