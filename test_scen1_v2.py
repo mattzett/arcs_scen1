@@ -16,7 +16,7 @@ import scipy.io as spio
 import matplotlib.pyplot as plt
 import scipy.interpolate, scipy.sparse, scipy.sparse.linalg
 #from plot_fns import plotSigmaP_debug
-from scen1_numerical import div2D,grad2D,FDmat2D,laplacepieces2D,mag2xy,linear_scen1
+from scen1_numerical import laplacepieces2D,mag2xy,linear_scen1
 
 # setup
 plt.close("all")
@@ -104,7 +104,7 @@ sigHregsep=np.reshape(sigHregsep,[lx,ly],order="F")
 # take the Pedersen conductivity as given and solve the Hall problem (with curv. 
 #  regularization and favor solutions similar to Pedersen conductance)
 regparm1=1e-9
-regparm2=1e-14
+regparm2=5e-15
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern1=L2x+L2y                             # curvature

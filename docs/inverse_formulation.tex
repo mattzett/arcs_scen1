@@ -106,7 +106,7 @@ Moreover, one would also need the value of the Hall condutance at some reference
 
 Another approach to the inverse problem would be to view the conservation laws as constraints to be combined together with other prior information in the form of, e.g., smoothness constraints.  Here we rewrite the physical constraints in a matrix form to facilitate application of results from linear inverse theory.  Field quantities can be ``flattened'' into vectors using column major ordering and then operators can be represented through matrix operations.  The latter step can be understood as a decomposition of the derivative operations into finite difference matrices:
 \begin{equation}
-\underline{j} = \underline{\underline{I}} ~ \underline{p} \left( \nabla \cdot \mathbf{E}_\perp \right) + \underline{\underline{L}}_x \underline{p} E_x + \underline{\underline{L}}_y \underline{p} E_y - \underline{\underline{L}}_{E \times B} \underline{h} E_\perp
+\underline{j} = - \underline{\underline{I}} ~ \underline{p} \left( \nabla \cdot \mathbf{E}_\perp \right) - \underline{\underline{L}}_x \underline{p} E_x - \underline{\underline{L}}_y \underline{p} E_y + \underline{\underline{L}}_{E \times B} \underline{h} E_\perp
 \end{equation}
 \begin{equation}
 \underline{s} = - E^2 \underline{\underline{I}} ~ \underline{p}
@@ -121,7 +121,7 @@ The left-hand sides of each conservation law (i.e. measurements) are similarly s
 \end{equation}
 Finally the right-hand side operations may be expressed in block diagonal form:
 \begin{equation}
-\underline{\underline{A}} \equiv \left[ \begin{array}{cc} \underline{\underline{I}}  \left( \nabla \cdot \mathbf{E}_\perp \right) +  \underline{\underline{L}}_x  E_x + \underline{\underline{L}}_y E_y  & ~ -\underline{\underline{L}}_{E \times B} E_\perp \\ -E^2 \underline{\underline{I}} & \underline{\underline{0}} \end{array} \right]
+\underline{\underline{A}} \equiv \left[ \begin{array}{cc} -\underline{\underline{I}}  \left( \nabla \cdot \mathbf{E}_\perp \right) -  \underline{\underline{L}}_x  E_x - \underline{\underline{L}}_y E_y  & ~ \underline{\underline{L}}_{E \times B} E_\perp \\ -E^2 \underline{\underline{I}} & \underline{\underline{0}} \end{array} \right]
 \end{equation}
 Yielding our full set of constrains as:
 \begin{equation}
@@ -140,7 +140,19 @@ The matrix to be inverted here is singular for reasons noted previously; we adop
 \begin{equation}
 \hat{x} = \left( A^T A  + \lambda I \right)^{-1} A^T b
 \end{equation}
-where $\lambda$ is a regularization parameter.  
+where $\lambda$ is a regularization parameter.  This approach regularizes the norm of the solution and coerces it to favor small norms.  One could also enforce any other conditions that can be expressed as a linear operation, yielding:
+\begin{equation}
+\hat{x} = \left( A^T A  + \lambda  \Gamma^T \Gamma \right)^{-1} A^T b
+\end{equation}
+where $\Gamma$ is an operator describing smoothness (e.g. Laplacian) or variation (gradient).  We find that the laplacian works well to keep the reconstructions as smooth as possible.  Finally we can add in an offset term, i.e. solve a problem of the form:
+\begin{equation}
+\hat{x} = \min_x \left\{  || Ax -b ||^2 + || \Gamma x||^2 +  || x - x_0 ||^2 \right\}
+\end{equation}
+Which solves the least squares problem subject to constraints on smoothness and some expected value for the solution.  The solution is then given by:
+\begin{equation}
+\hat{x} = \left( A^T A  + \lambda  \Gamma^T \Gamma \right)^{-1} \left( A^T b - \Gamma^T \Gamma x_0\right)
+\end{equation}
+
 
 FIXME: Need to add error covariance calculations.  
 
