@@ -34,6 +34,8 @@ mlatp=np.asarray(data["mlatp"],dtype="float64")
 mlatp=mlatp.squeeze()
 int_ohmic_ref=np.asarray(data["int_ohmic"])       # this computed via integration of 3D dissipation; indexed x,y
 ohmic_ref=np.asarray(data["ohmici"])
+E2=np.asarray(data["E2"])
+E3=np.asarray(data["E3"])
 
 # map magnetic coordinates to local Cartesian to facilitate differencing and "fitting"
 [x,y]=mag2xy(mlon,mlat)
@@ -54,3 +56,36 @@ interpolant=scipy.interpolate.interp2d(xp,yp,SigmaH_ref.transpose())
 SigmaH_refi=(interpolant(x,y)).transpose()
 [gradSigPx,gradSigPy]=grad2D(SigmaP_refi,x,y)
 gradSigHproj=Jpar+gradSigPx*Ex+gradSigPy*Ey+SigmaP_refi*divE     # Hall term from current continuity
+
+# check divergences
+divEinterp=div2D(Ex,Ey,x,y)
+Exp=np.squeeze(E2[-1,:,:])
+Eyp=np.squeeze(E3[-1,:,:])
+divE=div2D(Exp,Eyp,xp,yp)
+
+plt.figure()
+plt.pcolormesh(x,y,Ex.transpose())
+plt.colorbar()
+
+plt.figure()
+plt.pcolormesh(x,y,Ey.transpose())
+plt.colorbar()
+
+plt.figure()
+plt.pcolormesh(xp,yp,Exp.transpose())
+plt.colorbar()
+
+plt.figure()
+plt.pcolormesh(xp,yp,Eyp.transpose())
+plt.colorbar()
+
+plt.figure()
+plt.pcolormesh(x,y,divEinterp.transpose())
+plt.colorbar()
+plt.clim(-3.5e-6,3.5e-6)
+
+plt.figure()
+plt.pcolormesh(xp,yp,divE.transpose())
+plt.colorbar()
+plt.clim(-3.5e-6,3.5e-6)
+
