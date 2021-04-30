@@ -97,9 +97,9 @@ A=UR+linterm
 # Regularize
 regparm1=1e-9
 #regparm2=5e-15
-regparm2=1e-13
+regparm2=0.01e-13
 #refrat=1
-refrat=1.5
+refrat=2.5    # default to above 3 keV particles???
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern1=L2x+L2y                             # curvature
