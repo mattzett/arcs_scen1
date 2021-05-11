@@ -26,7 +26,8 @@ flagdebug=True
 # Load synthetic data maps and organize data, permute/transpose arrays as lat,lon for plotting
 #  squeeze 1D arrays for plotting as well
 #  We presume all of the data are organized as (z),x,y upon input
-filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
+#filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
+filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.osse.modelgrid.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")      # do not use directly in calculations due to r,theta,phi basis.
 Ex=np.squeeze(E[0,:,:,1]); Ey=np.squeeze(E[0,:,:,2]);
@@ -95,11 +96,11 @@ b=jvec/SigmaPvec+divE.flatten(order="F")+ \
 A=UR+linterm
 
 # Regularize
-regparm1=1e-9
-#regparm2=5e-15
-regparm2=0.01e-13
-#refrat=1
-refrat=2.5    # default to above 3 keV particles???
+regparm1=1e-9       # ref. val.
+#regparm2=0.01e-13   # ref. val
+regparm2=10e-13   # ref. val
+#refrat=2.5          # ref. val., default to above 3 keV particles???
+refrat=2.0
 scale=np.ones((lx,ly))
 [L2x,L2y]=laplacepieces2D(x,y,scale,scale)
 regkern1=L2x+L2y                             # curvature

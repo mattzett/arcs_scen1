@@ -27,7 +27,7 @@ flagdebug=True
 # Load synthetic data maps and organize data, permute/transpose arrays as lat,lon for plotting
 #  squeeze 1D arrays for plotting as well
 #  We presume all of the data are organized as (z),x,y upon input
-filename="/Users/zettergm/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
+filename="/Users/zettergm/Pegasusr4i/Dropbox (Personal)/shared/shared_simulations/arcs/scen1.mat"
 data=spio.loadmat(filename)
 E=np.asarray(data["E"],dtype="float64")      # do not use directly in calculations due to r,theta,phi basis.
 Ex=np.squeeze(E[0,:,:,1]); Ey=np.squeeze(E[0,:,:,2]);
